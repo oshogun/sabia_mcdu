@@ -126,6 +126,15 @@ production dependencies before building** (`npm --prefix sidecar ci` or
 haven't verified); there is no separate "prune dev dependencies for the
 bundle" step.
 
+That install **compiles `better-sqlite3` from source**: it publishes no prebuilt
+binary for Node 20's ABI, so `npm ci` always falls through to `node-gyp` and
+needs a C++ toolchain. It also has to be built against Node 20, because the
+sidecar runs under whatever `node` the user has. The sidecar loads the SQLite
+driver lazily and fails soft, so a build that quietly did not produce the binding
+ships an installer with navdata silently dead rather than visibly broken — always
+confirm `node -e "require('better-sqlite3')"` from `sidecar/` before trusting one.
+CI asserts exactly that before it bundles anything.
+
 CI does exactly this on `windows-latest` for a tag push, and attaches both
 files to the Release (and to the workflow run as an artifact, so a failed
 release step doesn't throw the build away).
