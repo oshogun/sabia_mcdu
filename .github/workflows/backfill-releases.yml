@@ -1,0 +1,143 @@
+name: Backfill GitHub Releases
+
+# One-shot repair tool, run by hand.
+#
+# Why it exists: v0.1.0-v0.6.0 were tagged retroactively on commits whose trees
+# predate .github/workflows/, and a tag whose tree has no workflow file starts no
+# workflow run at all - so the release job in ci.yml can never publish those
+# Releases. (GitHub also emits no workflow events whatsoever when more than 3
+# tags arrive in a single push, which is a second way to lose those runs.) This
+# workflow runs from main, where it does exist, and publishes what is missing.
+#
+# It does NOT verify version fields: old commits legitimately carry the old
+# numbers, so a match requirement would make the backfill impossible. It also
+# does not attach installers - it cannot build those old trees.
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Space-separated tags to backfill. Empty = every v[0-9]* tag, in version order.'
+        required: false
+        default: ''
+      dry_run:
+        description: 'List what would be created and change nothing.'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # checkout can leave annotated tags as lightweight refs, which makes
+      # %(contents:subject) come back empty. Re-fetch them as real tag objects.
+      - name: Fetch tags as annotated objects
+        run: git fetch --force --tags origin
+
+      - name: Backfill releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${INPUT_TAGS// /}" ]; then
+            # shellcheck disable=SC2086
+            TAGS=$INPUT_TAGS
+          else
+            TAGS="$(git tag -l 'v[0-9]*' --sort=v:refname)"
+          fi
+
+          if [ -z "${TAGS// /}" ]; then
+            echo "No matching tags." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          {
+            echo "## Backfill GitHub Releases"
+            echo ""
+            echo "dry_run: \`$DRY_RUN\`"
+            echo ""
+            echo "| Tag | Action | Title |"
+            echo "| --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          created=0
+          skipped=0
+
+          for TAG in $TAGS; do
+            if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              echo "::warning::$TAG does not exist in this repository, skipping."
+              echo "| \`$TAG\` | skipped (no such tag) | |" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+              echo "$TAG: release already exists, skipping."
+              echo "| \`$TAG\` | skipped (release exists) | |" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            # Lightweight tags must be skipped, and an empty-subject test cannot
+            # find them: a lightweight ref resolves to the commit, so
+            # %(contents:subject) and %(contents:body) hand back the COMMIT's
+            # message and the Release would be titled with it. Verified locally:
+            #   git tag vLIGHT; git cat-file -t refs/tags/vLIGHT  -> commit
+            #   git tag -a vANNOT -m ...; git cat-file -t ...      -> tag
+            # Test the object type instead.
+            OBJTYPE="$(git cat-file -t "refs/tags/$TAG")"
+            if [ "$OBJTYPE" != "tag" ]; then
+              echo "$TAG: lightweight tag (ref is a $OBJTYPE, not a tag object), so it has no release notes of its own. Skipping; re-tag it with 'git tag -a -f' if you want it published."
+              echo "| \`$TAG\` | skipped (lightweight tag) | |" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            # Second guard: an annotated tag whose message is empty.
+            SUBJECT="$(git tag -l "$TAG" --format='%(contents:subject)')"
+            if [ -z "$SUBJECT" ]; then
+              echo "$TAG: annotated tag with an empty message, nothing to publish. Skipping."
+              echo "| \`$TAG\` | skipped (empty tag message) | |" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+            BODY="$(git tag -l "$TAG" --format='%(contents:body)')"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "$TAG: would create release titled \"$SUBJECT\""
+              echo "| \`$TAG\` | would create (dry run) | $SUBJECT |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            # --notes-file, not --notes: an empty body would collapse `--notes ""`.
+            # --latest=false: gh picks "latest" from date and version, so
+            # backfilling v0.6.0 after v1.0.0 exists could move the Latest badge to
+            # an old, installer-less release. Never let a backfill do that.
+            printf '%s\n' "$BODY" > "$RUNNER_TEMP/notes-$TAG.md"
+            gh release create "$TAG" --repo "$REPO" \
+              --verify-tag --latest=false \
+              --title "$SUBJECT" --notes-file "$RUNNER_TEMP/notes-$TAG.md"
+            echo "$TAG: created release \"$SUBJECT\""
+            echo "| \`$TAG\` | created | $SUBJECT |" >> "$GITHUB_STEP_SUMMARY"
+            created=$((created + 1))
+          done
+
+          {
+            echo ""
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "Dry run: nothing was changed. Re-run with \`dry_run: false\` to publish."
+            else
+              echo "Created $created release(s), skipped $skipped."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

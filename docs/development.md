@@ -179,17 +179,22 @@ config-UI entry → steps 4, 5, 14 (`ENTRY OUT OF RANGE`, `INVALID ENTRY`,
 
 ## Branching and PRs
 
-A single `main` branch, no CI — every check above runs locally before a
-commit. Commits are small and focused, with an imperative subject line (see
-`git log --oneline`: "Request a simulated PDC clearance from the CDU",
-"Prefile the latest SimBrief plan from a new CDU FPLN page"). Open pull
-requests against `main` on `github.com/oshogun/sabia_mcdu`.
+A single `main` branch. CI (`.github/workflows/ci.yml`) runs the checks above on
+every push and pull request, on a `windows-latest` runner — except the two
+puppeteer UI checks, which are excluded on purpose and stay unverified. Run the
+checks locally before committing anyway; a red CI run afterwards is a slower way
+to learn the same thing. Commits are small and focused, with an imperative
+subject line (see `git log --oneline`: "Request a simulated PDC clearance from
+the CDU", "Prefile the latest SimBrief plan from a new CDU FPLN page"). Open pull
+requests against `main` on `github.com/oshogun/sabia_mcdu`. Releases are
+annotated `vX.Y.Z` tags on `main` — see [release.md](release.md).
 
 ## Contribution and review conventions
 
 - Describe the behaviour change and the checks you ran in the commit message
-  and/or PR description — there's no CI to fall back on, so that description
-  is the only record a reviewer has.
+  and/or PR description — CI records that the checks passed, not why the change
+  is right or what you verified by hand (the in-sim behaviour above, above all),
+  so that description is still the only record a reviewer has of those.
 - Update the relevant doc in the same change, not as a follow-up.
 - Never commit `config.json`, tokens, `target/`, `node_modules/` or `dist/`
   (see `.gitignore`).

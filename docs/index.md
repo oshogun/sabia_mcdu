@@ -32,7 +32,7 @@ you're trying to do.
 | [docs/operations.md](operations.md) | Operators | Running it day to day: restart behaviour, logs, timeouts |
 | [docs/troubleshooting.md](troubleshooting.md) | Users, operators | What a given failure message means and what to do about it |
 | [docs/development.md](development.md) | Contributors | Repository layout, dev workflow, checks, branching and PR conventions |
-| [docs/release.md](release.md) | Maintainers | Versioning and building the installer |
+| [docs/release.md](release.md) | Maintainers | The semver tagging scheme, CI releases, and building the installer |
 | [docs/security.md](security.md) | Everyone | Token handling, CSP, and known limitations |
 | [docs/glossary.md](glossary.md) | Everyone | What a term used across these docs means |
 | [gauge/README.md](../gauge/README.md) | Contributors doing CDU work | Running and using the preview harness |
