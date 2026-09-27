@@ -118,6 +118,14 @@ produces an MSI and an NSIS `.exe` under
 `Sabiá_1.0.0_x64-setup.exe` under `bundle/nsis/`. The names are non-ASCII;
 scripts that pick them up should glob, not string-build them.
 
+**The published Release assets are named without the accent** —
+`Sabia_1.0.0_x64_en-US.msi` and `Sabia_1.0.0_x64-setup.exe`. GitHub normalises
+the non-ASCII `á` away when it stores an asset, so the file a user downloads is
+not named the same as the file the build produced. Verified on v1.0.0: the
+release job logged `collected Sabiá_1.0.0_x64_en-US.msi (38.5 MB)` and published
+`Sabia_1.0.0_x64_en-US.msi`. Neither name is wrong; do not "fix" one to match
+the other.
+
 The bundle embeds `sidecar/dist`, `sidecar/node_modules` and
 `sidecar/package.json` as resources — whatever is on disk in those
 directories at build time is exactly what ships. **Install the sidecar's
