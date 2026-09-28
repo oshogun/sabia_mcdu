@@ -45,8 +45,12 @@ The token is scrubbed at every boundary it could otherwise cross:
 - **Webview**: never sees the raw token under any code path. `config_get` and
   every status/datalink push carry only `tokenSet`.
 - **CDU**: the NETWORK page's `ingestToken` field is never redisplayed — it
-  renders as a fixed mask (`••••••••` / `□□□□□□□□`), never the stored value,
-  and the field is masked with `•` while the user is typing a new one.
+  renders as a fixed mask (`••••••••` / `□□□□□□□□`), never the stored value.
+  The scratchpad itself is masked (`MASKED ` plus dots) only while token entry
+  is armed via `L2`; an entry typed before arming and then sent to `L2` is
+  rejected and dropped, never stored as the token. A `CLR` that deletes the
+  last character of the masked entry disarms it, as does a page change; a
+  `CLR` that only dismisses a scratchpad message does not.
 
 ## Where the token travels
 

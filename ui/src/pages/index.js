@@ -118,6 +118,26 @@ function enterField(field) {
   ensureDraft();
   let entry = fmc.getScratchpad();
   if (fmc.hasScratchpadError()) return;
+  const armed = fmc.isScratchpadMasked();
+  // The token is typed only after L2 arms a masked entry; anything typed first
+  // was painted in the clear, so it is dropped rather than stored as the token.
+  if (field === 'ingestToken' && !armed) {
+    if (entry) {
+      fmc.setScratchpad('');
+      feedback(field, 'L2 FIRST THEN TOKEN');
+      return;
+    }
+    // Empty the entry first: replacing it unmasks, and a leftover under an
+    // advisory would otherwise become the start of the token.
+    fmc.setScratchpad('');
+    fmc.setScratchpadMasked(true);
+    return;
+  }
+  // An armed entry is a secret: it may only land on the token field.
+  if (armed && field !== 'ingestToken') {
+    feedback(field, 'TOKEN ARMED · USE L2');
+    return;
+  }
   if (!entry) {
     if (field === 'sim') {
       const choices = ['2020', '2024', 'fsx'];
@@ -210,7 +230,7 @@ export function register(api) {
           }
           el.dataset.edited = String(edited.has(field));
         }
-        view.querySelector('[data-config-feedback]').textContent = id === 'NETWORK' ? 'ENTRY MASKED · LSK TO SET' : '';
+        view.querySelector('[data-config-feedback]').textContent = id === 'NETWORK' ? 'TOKEN: L2, TYPE, L2' : '';
         return view;
       },
       onLsk(lsk) {

@@ -421,7 +421,7 @@ async function mountDatalinkPages(t, tag, overrides = {}) {
   const { host, gaugeDev } = overrides.mock || await loadMock();
   const api = overrides.via || host;
   const pages = new Map();
-  const shell = { id: null, view: null, scratchpad: null, entry: '', number: '', datalink: null, title: '', config: null };
+  const shell = { id: null, view: null, scratchpad: null, entry: '', masked: false, number: '', datalink: null, title: '', config: null };
   const run = (fn) => Promise.resolve().then(fn).then(
     (result) => (result && typeof result.ok === 'boolean' ? plain(result) : localError('host-error')),
     () => localError('host-error'));
@@ -439,11 +439,13 @@ async function mountDatalinkPages(t, tag, overrides = {}) {
       return true;
     },
     setScratchpad: (value, kind = 'entry') => {
-      if (kind === 'entry') { shell.entry = String(value ?? ''); shell.scratchpad = null; }
+      if (kind === 'entry') { shell.entry = String(value ?? ''); shell.scratchpad = null; shell.masked = false; }
       else shell.scratchpad = [value, kind];
     },
     getScratchpad: () => (shell.scratchpad ? '' : shell.entry),
     hasScratchpadError: () => Boolean(shell.scratchpad && shell.scratchpad[1] === 'error'),
+    setScratchpadMasked: (on) => { shell.masked = on === true; },
+    isScratchpadMasked: () => shell.masked,
     getDatalinkState: () => shell.datalink,
     watchDatalink: (on) => run(() => api.watchDatalink(on)),
     refreshDatalink: () => run(() => api.refreshDatalink()),
@@ -524,7 +526,8 @@ async function mountDatalinkPages(t, tag, overrides = {}) {
     host, gaugeDev, pages, shell, fmc, lsk,
     rows: () => shell.view.children.map((line) => line.children.map((cell) => cell.textContent)),
     writes: () => plain(gaugeDev.calls).filter((call) => WRITE_METHODS.includes(call.method)),
-    type: (text) => fmc.setScratchpad(text),
+    // Typing, like the real keys, keeps an armed entry masked.
+    type: (text) => { const { masked } = shell; fmc.setScratchpad(text); shell.masked = masked; },
     scenario: async (name) => { shell.datalink = plain(gaugeDev.datalinkScenario(name)); await settle(); },
   };
 }
@@ -1323,12 +1326,21 @@ function bootDocument() {
     target.setAttribute(attribute, value);
     for (const fn of listeners.get('click') || []) fn({ target });
   };
-  return { Element, document, press };
+  const fire = (type, event) => { for (const fn of listeners.get(type) || []) fn(event); };
+  return { Element, document, press, fire, root };
 }
+
+/**
+ * The untagged bridge.js adopts whichever host the first real-shell boot
+ * installed and keeps it for the process, so every test that boots app.js
+ * shares one mock.
+ */
+let shellMock = null;
+const bootMock = async () => (shellMock ??= await loadMock());
 
 test('app shell: MENU keeps L1 to L5 and L6 opens FPLN through the real router and host bridge', async (t) => {
   const { Element, document, press } = bootDocument();
-  const { host, gaugeDev } = await loadMock();
+  const { host, gaugeDev } = await bootMock();
   const saved = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
   // The shell's once-a-second repaint and the datalink lease renewal would keep the test process alive.
   globalThis.setInterval = () => ({ fake: true });
@@ -1372,6 +1384,199 @@ test('app shell: MENU keeps L1 to L5 and L6 opens FPLN through the real router a
   assert.equal(document.getElementById('scratchpad').textContent, 'SIMBRIEF PLAN PREFILED');
   press('data-key', 'NEXT');
   assert.equal(document.getElementById('scratchpad').textContent, 'KEY NOT ACTIVE');
+});
+
+test('cfg network: the token is typed only after L2 arms a masked entry, and never painted in the clear', async (t) => {
+  const { Element, document, press, fire, root } = bootDocument();
+  const { host, gaugeDev } = await bootMock();
+  // The CFG templates, cloned the way ui/index.html's are: field values and a feedback line.
+  const FIELD_ROWS = { network: ['serverUrl', 'ingestToken', 'certPath'], sim: ['sim', 'autoUplink'], traffic: ['trafficEnabled', 'trafficRadiusM'] };
+  const views = [];
+  let cfg = { fields: [], feedback: null };
+  const byId = document.getElementById;
+  document.getElementById = (id) => {
+    const template = /^page-(network|sim|traffic)-template$/.exec(id);
+    if (!template) return byId(id);
+    const cloneNode = () => {
+      const view = new Element();
+      const fields = FIELD_ROWS[template[1]].map((name) => Object.assign(view.appendChild(new Element()), { dataset: { fieldValue: name } }));
+      const feedback = view.appendChild(new Element());
+      view.querySelectorAll = () => fields;
+      view.querySelector = () => feedback;
+      cfg = { fields, feedback };
+      views.push(view);
+      return view;
+    };
+    return { content: { firstElementChild: { cloneNode } } };
+  };
+  const find = document.querySelector;
+  document.querySelector = (selector) => (selector === '[data-config-feedback]' ? cfg.feedback : find(selector));
+  document.querySelectorAll = () => cfg.fields;
+  // Every text and attribute ever written to any element, not only the last one.
+  const painted = [];
+  const { get: getText, set: setText } = Object.getOwnPropertyDescriptor(Element.prototype, 'textContent');
+  const setAttribute = Element.prototype.setAttribute;
+  Object.defineProperty(Element.prototype, 'textContent', {
+    get: getText,
+    set(value) { painted.push(String(value)); setText.call(this, value); },
+  });
+  Element.prototype.setAttribute = function record(name, value) { painted.push(`${name}=${value}`); setAttribute.call(this, name, value); };
+  const pad = document.getElementById('scratchpad');
+  // Only the patch's keys are kept: its token is the real value the host is handed.
+  const patches = [];
+  const setConfig = host.setConfig;
+  host.setConfig = (patch) => { patches.push(Object.keys(patch)); return setConfig(patch); };
+  const saved = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
+  globalThis.setInterval = () => ({ fake: true });
+  globalThis.clearInterval = () => {};
+  Object.assign(globalThis, { window: { __FMC_HOST__: host }, document, Node: Element, Element });
+  t.after(() => {
+    host.setConfig = setConfig;
+    Object.assign(globalThis, saved);
+    for (const name of ['window', 'document', 'Node', 'Element']) delete globalThis[name];
+  });
+  await import(new URL('../../ui/src/app.js?cfg-token', import.meta.url));
+  const { FMC } = globalThis.window;
+  const screen = document.getElementById('fmc-screen');
+  const landOn = async (id) => {
+    for (let i = 0; i < 400 && screen.getAttribute('data-page') !== id; i += 1) await later(5);
+    assert.equal(screen.getAttribute('data-page'), id);
+    await settle();
+  };
+  const TOKEN = 'SENTINEL-CFG-TOKEN-0000';
+  const typeKeys = (text) => { for (const char of text) press('data-key', char); };
+  const paste = (text) => fire('paste', { clipboardData: { getData: () => text }, preventDefault() {} });
+  const field = (name) => cfg.fields.find((el) => el.dataset.fieldValue === name).textContent;
+  const scratch = () => [pad.textContent, pad.getAttribute('data-message-kind'), FMC.isScratchpadMasked()];
+  const masked = (n) => `MASKED ${'•'.repeat(Math.min(15, n))}`;
+
+  press('data-key', 'MENU');
+  await landOn('MENU');
+  press('data-lsk', 'L2');
+  await landOn('NETWORK');
+  assert.equal(cfg.feedback.textContent, 'TOKEN: L2, TYPE, L2');
+
+  // Nothing armed: typed and pasted entries are painted in the clear and land on L1.
+  typeKeys('http://cfg.invalid');
+  assert.deepEqual(scratch(), ['http://cfg.invalid', 'entry', false]);
+  paste('/a\r\n');
+  assert.deepEqual(scratch(), ['http://cfg.invalid/a', 'entry', false]);
+  press('data-lsk', 'L1');
+  assert.deepEqual([field('serverUrl'), pad.textContent], ['http://cfg.invalid/a', '']);
+
+  // L2 un-armed with an entry: dropped, not stored, and the error teaches the order.
+  typeKeys('typed-before-arming');
+  press('data-lsk', 'L2');
+  assert.deepEqual(scratch(), ['L2 FIRST THEN TOKEN', 'error', false]);
+  press('data-key', 'CLR');
+  assert.deepEqual(scratch(), ['', 'entry', false]);
+  press('data-key', 'EXEC');
+  await settle();
+  assert.deepEqual([pad.textContent, field('ingestToken'), patches.length], ['INVALID ENTRY', '□□□□□□□□', 0], 'no pending token to save');
+  press('data-key', 'CLR');
+
+  // Armed: typed and pasted characters are dots behind the marker.
+  press('data-lsk', 'L2');
+  assert.deepEqual(scratch(), ['MASKED ', 'entry', true]);
+  typeKeys(TOKEN.slice(0, 10));
+  assert.deepEqual(scratch(), [masked(10), 'entry', true]);
+  paste(`${TOKEN.slice(10)}\n`);
+  assert.deepEqual([...scratch(), FMC.getScratchpad() === TOKEN], [masked(TOKEN.length), 'entry', true, true]);
+  // A message over the entry, then CLR: the entry comes back still masked.
+  press('data-lsk', 'L4');
+  assert.deepEqual(scratch(), ['KEY NOT ACTIVE', 'error', true]);
+  press('data-key', 'CLR');
+  assert.deepEqual(scratch(), [masked(TOKEN.length), 'entry', true]);
+  press('data-key', '+/-');
+  assert.deepEqual([...scratch(), FMC.getScratchpad() === `-${TOKEN}`], [masked(TOKEN.length + 1), 'entry', true, true]);
+  press('data-key', '+/-');
+  // L1 and L3 refuse the armed entry and stay armed; the fields keep their values.
+  const before = [field('serverUrl'), field('certPath')];
+  for (const lsk of ['L1', 'L3']) {
+    press('data-lsk', lsk);
+    assert.deepEqual(scratch(), ['TOKEN ARMED · USE L2', 'error', true], lsk);
+    press('data-key', 'CLR');
+    assert.deepEqual([...scratch(), FMC.getScratchpad() === TOKEN], [masked(TOKEN.length), 'entry', true, true], lsk);
+  }
+  assert.deepEqual([field('serverUrl'), field('certPath')], before);
+
+  // L2 again stores it as the pending token, disarms, and EXEC saves it as before.
+  press('data-lsk', 'L2');
+  assert.deepEqual([...scratch(), field('ingestToken')], ['', 'entry', false, '••••••••']);
+  press('data-key', 'EXEC');
+  for (let i = 0; i < 100 && pad.textContent !== 'CONFIG SAVED'; i += 1) await later(5);
+  assert.equal(pad.textContent, 'CONFIG SAVED');
+  assert.deepEqual(patches, [['version', 'serverUrl', 'ingestToken', 'certPath', 'sim', 'autoUplink', 'trafficEnabled', 'trafficRadiusM']]);
+  assert.equal(plain(await host.getConfig()).config.tokenSet, true);
+  press('data-key', 'EXEC');
+  for (let i = 0; i < 100 && patches.length < 2; i += 1) await later(5);
+  assert.equal(patches[1].includes('ingestToken'), false, 'an untouched token stays out of the patch');
+  await settle();
+  press('data-key', 'CLR');
+
+  // A CLR that empties the scratchpad disarms, and so does DEL; the next entry is clear.
+  press('data-lsk', 'L2');
+  typeKeys('ab');
+  press('data-key', 'CLR');
+  assert.deepEqual(scratch(), [masked(1), 'entry', true]);
+  press('data-key', 'CLR');
+  assert.deepEqual(scratch(), ['', 'entry', false]);
+  typeKeys('c');
+  assert.deepEqual(scratch(), ['c', 'entry', false]);
+  press('data-key', 'CLR');
+  press('data-lsk', 'L2');
+  press('data-key', 'CLR');
+  assert.deepEqual(scratch(), ['', 'entry', false], 'CLR on an armed, empty scratchpad');
+  // A CLR that only dismisses a message over an armed, empty entry keeps it armed.
+  for (const [lsk, message, kind] of [['L2', 'ENTER TOKEN', 'advisory'], ['L1', 'TOKEN ARMED · USE L2', 'error'], ['L3', 'TOKEN ARMED · USE L2', 'error']]) {
+    press('data-lsk', 'L2');
+    press('data-lsk', lsk);
+    assert.deepEqual(scratch(), [message, kind, true], lsk);
+    press('data-key', 'CLR');
+    assert.deepEqual(scratch(), ['MASKED ', 'entry', true], lsk);
+    typeKeys(TOKEN);
+    assert.deepEqual([...scratch(), FMC.getScratchpad() === TOKEN], [masked(TOKEN.length), 'entry', true, true], lsk);
+    press('data-key', 'DEL');
+    assert.deepEqual(scratch(), ['', 'entry', false], lsk);
+  }
+  press('data-lsk', 'L2');
+  typeKeys(TOKEN);
+  press('data-key', 'DEL');
+  assert.deepEqual(scratch(), ['', 'entry', false], 'DEL');
+
+  // Leaving the page disarms: by MENU, and by stepping to the next CFG page.
+  press('data-lsk', 'L2');
+  typeKeys(TOKEN);
+  press('data-key', 'MENU');
+  await landOn('MENU');
+  assert.deepEqual(scratch(), ['', 'entry', false]);
+  press('data-lsk', 'L2');
+  await landOn('NETWORK');
+  typeKeys('z');
+  assert.deepEqual(scratch(), ['z', 'entry', false]);
+  press('data-key', 'CLR');
+  press('data-lsk', 'L2');
+  typeKeys(TOKEN);
+  press('data-key', 'NEXT');
+  await landOn('SIM');
+  typeKeys('q');
+  assert.deepEqual(scratch(), ['q', 'entry', false]);
+
+  // The sentinel never reached a painted text, a DOM text or attribute, or a recorded call.
+  const texts = [];
+  const walk = (el, seen = new Set()) => {
+    if (!el || seen.has(el)) return;
+    seen.add(el);
+    texts.push(el.ownText, el.title, el.attributes, el.dataset);
+    for (const child of el.children) walk(child, seen);
+    for (const child of el.found?.values() || []) walk(child, seen);
+  };
+  walk(root);
+  for (const view of views) walk(view);
+  const seen = JSON.stringify({ painted, texts, calls: plain(gaugeDev.calls), config: plain(await host.getConfig()) });
+  // The clear entries are there to be found, so the search itself is known to look.
+  assert.ok(seen.includes('typed-before-arming') && texts.includes('http://cfg.invalid/a'));
+  assert.equal(seen.includes('SENTINEL'), false);
 });
 
 test('fpln settings: PREFILE is offered only with a Pilot ID, and without one R6 calls nothing', async (t) => {
@@ -2828,10 +3033,17 @@ test('clearance kept results are forgotten when CFG NETWORK saves another server
     if (landed === 'DL-CLEARANCE-CONFIRM') await ui.lsk('DL-CLEARANCE-CONFIRM', 'L6');
     return landed;
   };
-  // CFG NETWORK as the pilot uses it: an optional entry on L1 (URL) or L2 (token), then EXEC.
+  // CFG NETWORK as the pilot uses it: an optional entry on L1 (URL) or L2 (token,
+  // typed after L2 arms a masked entry), then EXEC.
   const save = async (lsk, entry) => {
     const network = pages.get('NETWORK');
     if (lsk) {
+      if (lsk === 'L2') {
+        // The pilot clears any message first; L2 does nothing over an error.
+        fmc.setScratchpad('');
+        assert.equal(network.onLsk('L2', {}), true);
+        assert.equal(fmc.isScratchpadMasked(), true);
+      }
       ui.type(entry);
       assert.equal(network.onLsk(lsk, {}), true);
     }

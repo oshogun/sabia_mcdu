@@ -20,6 +20,9 @@ import * as statusPage from './pages/status-page.js';
 import { defaultStatus } from './status.js';
 
 const MAX_SCRATCHPAD_CHARS = 4096;
+const SCRATCHPAD_COLS = 22;
+/** Painted ahead of a masked entry, so a scratchpad of dots says why. */
+const MASKED_PREFIX = 'MASKED ';
 /** Pages that live in the lazily-imported bundle. */
 const LAZY_PAGE_IDS = new Set(['NETWORK', 'SIM', 'TRAFFIC', 'DL-INDEX', 'FPLN']);
 
@@ -40,6 +43,9 @@ const state = {
   config: null,
   configPath: '',
   entry: '',
+  // Set by a page that has armed a secret entry: the entry is then painted as
+  // dots until it is replaced, emptied by CLR, or the page changes.
+  entryMasked: false,
   message: null,
   pagesLoaded: false,
   pagesLoading: null,
@@ -55,11 +61,9 @@ function paintScratchpad() {
     dom.scratchpad.setAttribute('data-message-kind', state.message.kind);
     return;
   }
-  // The destination LSK is selected after typing; mask every NETWORK entry
-  // so a token can never be painted before we know which field will receive it.
-  dom.scratchpad.textContent = state.pageId === 'NETWORK' && state.entry
-    ? '•'.repeat(Math.min(22, state.entry.length))
-    : state.entry.slice(-22);
+  dom.scratchpad.textContent = state.entryMasked
+    ? MASKED_PREFIX + '•'.repeat(Math.min(SCRATCHPAD_COLS - MASKED_PREFIX.length, state.entry.length))
+    : state.entry.slice(-SCRATCHPAD_COLS);
   dom.scratchpad.setAttribute('data-message-kind', 'entry');
 }
 
@@ -71,11 +75,24 @@ function paintScratchpad() {
 function setScratchpad(text, kind = 'entry') {
   const value = text === null || text === undefined ? '' : String(text);
   if (kind === 'entry') {
-    state.entry = value.slice(0, MAX_SCRATCHPAD_CHARS);
-    state.message = null;
-  } else {
-    state.message = { text: value, kind: kind === 'advisory' ? 'advisory' : 'error' };
+    // A new entry is never the secret that was armed for, so it is shown.
+    writeEntry(value, false);
+    return;
   }
+  state.message = { text: value, kind: kind === 'advisory' ? 'advisory' : 'error' };
+  paintScratchpad();
+}
+
+/** Replaces the entry and sets its masking in one step, so it is painted once. */
+function writeEntry(value, masked) {
+  state.entry = value.slice(0, MAX_SCRATCHPAD_CHARS);
+  state.message = null;
+  state.entryMasked = masked;
+  paintScratchpad();
+}
+
+function setScratchpadMasked(on) {
+  state.entryMasked = on === true;
   paintScratchpad();
 }
 
@@ -98,6 +115,12 @@ function clearScratchpad() {
     state.message = null;
   } else if (state.entry.length > 0) {
     state.entry = state.entry.slice(0, -1);
+    // Removing the last character of a masked entry also cancels it.
+    if (!state.entry) state.entryMasked = false;
+  } else {
+    // A CLR on an empty scratchpad with no message cancels an armed entry;
+    // one that only dismissed a message leaves it armed.
+    state.entryMasked = false;
   }
   paintScratchpad();
 }
@@ -170,6 +193,8 @@ async function showPage(id) {
   // Cleared child by child rather than with replaceChildren(): a throw here
   // would leave no current page and freeze the display.
   if (dom.body) while (dom.body.firstChild) dom.body.removeChild(dom.body.firstChild);
+  // A new page starts with an empty, unmasked scratchpad: no page inherits
+  // another's entry or its masking.
   if (state.pageId !== id) setScratchpad('');
   state.pageId = id;
   paintScratchpad();
@@ -368,7 +393,8 @@ function applyExit(payload) {
 
 function handleKey(key) {
   if (key === '+/-') {
-    setScratchpad(state.entry.startsWith('-') ? state.entry.slice(1) : `-${state.entry}`);
+    // Edits the entry in place, so a masked entry stays masked.
+    writeEntry(state.entry.startsWith('-') ? state.entry.slice(1) : `-${state.entry}`, state.entryMasked);
     return;
   }
   if (typeof key === 'string' && key.length === 1) {
@@ -537,6 +563,8 @@ function boot() {
     setScratchpad,
     getScratchpad,
     hasScratchpadError: () => state.message?.kind === 'error',
+    setScratchpadMasked,
+    isScratchpadMasked: () => state.entryMasked,
     getConfigCache: () => state.config,
     getConfigPath: () => state.configPath,
     getStatus: () => state.status,

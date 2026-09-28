@@ -91,7 +91,7 @@ webview.
   to `onLog`/`onExit`/`onDatalink` directly), `adapter-leak` (`app.js` never
   exposes `bridge` as an interface member), `interface-members` (every named
   interface member is actually present on `app.js`'s built interface —
-  `npm run check:ui` currently reports all thirty-one present).
+  `npm run check:ui` currently reports all thirty-three present).
 - **Host contract changes**: adding or changing a Tauri command or event
   needs a matching Rust `#[tauri::command]`/emit *and* a matching entry in
   `ui/src/bridge.js`, verified by `node tools/contract-check.mjs` — see
@@ -146,7 +146,7 @@ the Sabiá server reachable with a known ingest token.
 | # | Step | Expected observation | Proves |
 | --- | --- | --- | --- |
 | 1 | Launch the app with no config file present (rename or delete `%APPDATA%\msfslogger\config.json` first if one exists) | Window opens on `STATUS`. App line reads `NO CONFIG`, sim line `SIM LINK STANDBY`, backend line `ACARS STANDBY`. No console window flashes. Nothing crashes or loops | AC1 |
-| 2 | `MENU` → `<NETWORK`, type the server URL, `L1`; type the token, `L2`; type the certificate path, `L3`; press `SAVE>` (`R6`) | Each value appears on its line; the token shows as `••••••••`; scratchpad shows `CONFIG SAVED`; `%APPDATA%\msfslogger\config.json` now exists with those values | AC2 |
+| 2 | `MENU` → `<NETWORK`, type the server URL, `L1`; `L2`, type the token, `L2`; type the certificate path, `L3`; press `SAVE>` (`R6`) | Each value appears on its line; the token shows as `••••••••`; scratchpad shows `CONFIG SAVED`; `%APPDATA%\msfslogger\config.json` now exists with those values | AC2 |
 | 3 | `MENU` → `<SIM`, set version to `2024`; `MENU` → `<TRAFFIC`, set radius to `60000`, `SAVE>` | Values persist when you navigate away and back; the file shows `"sim":"2024"`, `"trafficRadiusM":60000` | AC2 |
 | 4 | On `CFG TRAFFIC`, type `500` and press the radius LSK | Scratchpad shows `ENTRY OUT OF RANGE`; the field doesn't change; nothing is saved | AC2, negative test |
 | 5 | On `CFG NETWORK`, type `ftp://x` and press `L1` | Scratchpad shows `INVALID ENTRY`; field unchanged | AC2, negative test |

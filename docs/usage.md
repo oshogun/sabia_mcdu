@@ -12,9 +12,12 @@ only shows the CDU-side steps.
    axis) if no config file exists yet.
 2. Press the `MENU` key.
 3. On `MENU`, press the line-select key (LSK) next to `<NETWORK`.
-4. On `CFG NETWORK`: type the server URL on the scratchpad and press `L1`;
-   type the ingest token and press `L2`; type the certificate path (if the
-   server runs HTTPS, which is the norm) and press `L3`.
+4. On `CFG NETWORK`: type the server URL on the scratchpad and press `L1`
+   (shown in clear); press `L2` to arm token entry, type or paste the ingest
+   token, then press `L2` again to set it — the feedback line reads
+   `TOKEN: L2, TYPE, L2`, and the scratchpad shows dots only while armed;
+   type the certificate path (if the server runs HTTPS, which is the norm —
+   also shown in clear) and press `L3`.
 5. Press `R6` (`SAVE>`) to write the file — `EXEC` does the same thing. The
    scratchpad shows `CONFIG SAVED`.
 6. Press `MENU` again, then `<SIM` to set the SimConnect protocol version
@@ -34,7 +37,9 @@ one-line reason and the field keeps its previous value. `CFG NETWORK`:
 
 The token itself is never redisplayed — `CFG NETWORK` L2 always reads
 `••••••••` once one is set. Re-entering it replaces the stored token; leaving
-it untouched preserves the one already on disk.
+it untouched preserves the one already on disk. See
+[cdu-reference](cdu-reference.md) for the full arm/commit sequence and its
+refusal messages.
 
 ## 2. Starting/stopping the uplink and auto-start
 

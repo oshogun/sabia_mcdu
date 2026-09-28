@@ -159,14 +159,22 @@ try {
   await entry('https://example.invalid:4443/a/long/CaseSensitive/path/', 'L1');
   await rejected('serverUrl empty', 'DELETE', 'L1');
   await entry('https://example.invalid:4443/a/long/CaseSensitive/path/', 'L1');
-  await rejected('ingestToken empty', 'DELETE', 'L2');
+  // An entry typed before L2 armed the token field was shown in the clear; L2 drops it.
+  // Nothing is marked invalid, so a save would still go through: only the drop is checked.
+  await entry('DELETE', 'L2');
+  assert.equal(await text('#scratchpad'), 'L2 FIRST THEN TOKEN');
+  assert.equal(await page.$eval('#scratchpad', (el) => el.dataset.messageKind), 'error');
+  assert.equal(await page.evaluate(() => window.FMC.getScratchpad()), '');
+  console.log('PASS reject ingestToken unarmed: L2 FIRST THEN TOKEN; entry dropped');
   const token = 'PLACEHOLDER-TOKEN-MixedCase-1234567890';
   await page.evaluate(() => window.FMC.setScratchpad(''));
+  await page.click('[data-lsk="L2"]');
+  assert.equal(await text('#scratchpad'), 'MASKED ');
   // Exercise real physical key events, not a test-only form value.
   await page.keyboard.type(token);
   assert.equal(await page.evaluate(() => window.FMC.getScratchpad()), token);
   assert.equal(await page.evaluate((token) => document.documentElement.textContent.includes(token), token), false);
-  assert.equal(await text('#scratchpad'), '•'.repeat(22));
+  assert.equal(await text('#scratchpad'), `MASKED ${'•'.repeat(15)}`);
   await capture('config-token-entry');
   await page.click('[data-lsk="L2"]');
   assert.equal(await text('[data-field-value="ingestToken"]'), '••••••••');
@@ -206,7 +214,7 @@ try {
   await page.waitForFunction(() => document.getElementById('scratchpad').textContent === 'SAVE FAILED');
   console.log('PASS save failure: SAVE FAILED');
   // Page navigation must not reveal an unfinished secret.
-  await show('NETWORK'); await page.keyboard.type(token); await show('SIM');
+  await show('NETWORK'); await page.click('[data-lsk="L2"]'); await page.keyboard.type(token); await show('SIM');
   assert.equal(await text('#scratchpad'), '');
   assert.equal(await page.evaluate((token) => document.documentElement.textContent.includes(token), token), false);
   await page.click('[data-key="NEXT"]'); assert.equal(await page.$eval('#fmc-screen', (el) => el.dataset.page), 'TRAFFIC');

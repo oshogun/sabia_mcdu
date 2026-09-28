@@ -21,8 +21,9 @@ walkthroughs, see [usage](usage.md).
   repeatable while in flight).
 - **Scratchpad vs message line**: typed text (`entry`) and an
   error/advisory overlay (`message`) are separate — clearing a message
-  restores whatever was being typed. `CFG NETWORK`'s token field masks input
-  with `•` while typing.
+  restores whatever was being typed. Entries are shown in clear, except
+  `CFG NETWORK`'s token field, which masks input with dots only once `L2`
+  has armed token entry (see the page map below).
 
 ## Page map
 
@@ -30,7 +31,7 @@ walkthroughs, see [usage](usage.md).
 |---|---|---|---|---|
 | `MENU` | SABIÁ | `MENU` key from anywhere | L1–L6 → STATUS/NETWORK/SIM/TRAFFIC/DL-INDEX/FPLN | Static list |
 | `STATUS` | ACARS STATUS | boot default; L6 from most pages | L6 MENU; R6 start/stop uplink; R5 restart (only while crashed) | 4 axes, traffic line, config path |
-| `NETWORK` (CFG) | CFG NETWORK | MENU L2 | L1 serverUrl, L2 ingestToken, L3 certPath, L6 MENU, R6 save (EXEC also saves) | serverUrl / ingestToken (masked) / certPath |
+| `NETWORK` (CFG) | CFG NETWORK | MENU L2 | L1 serverUrl, L2 ingestToken (arm, then type, then commit — see below), L3 certPath, L6 MENU, R6 save (EXEC also saves) | serverUrl / ingestToken (masked) / certPath |
 | `SIM` (CFG) | CFG SIM | MENU L3 | L1 sim version, L2 autoUplink, L6/R6 as above | sim, autoUplink |
 | `TRAFFIC` (CFG) | CFG TRAFFIC | MENU L4 | L1 trafficEnabled, L2 trafficRadiusM, L6/R6 as above | trafficEnabled, trafficRadiusM |
 | `DL-INDEX` | ACARS DATALINK | MENU L5; L6 from other DL pages | R1 CLR PREFILE (if held); R2 SAYINTENTIONS→DL-SI; L3 MESSAGES→DL-THREAD; L4 DOWNLINK→DL-CANNED; R3 WX→DL-WX; R4 LOADSHEET→DL-LOADSHEET; R5 CLEARANCE; R6 REFRESH; L6 MENU | scope, DATALINK state line, prefiled-leg row |
@@ -49,6 +50,17 @@ walkthroughs, see [usage](usage.md).
 | `FPLN` | FLIGHT PLAN | MENU L6 | L6 MENU; R6 PREFILE→FPLN-CONFIRM (only if offered); R3 CLR PREFILE | Pilot ID status, held prefiled leg, last outcome |
 | `FPLN-CONFIRM` | PREFILE SIMBRIEF | FPLN R6 | R6 CONFIRM* (once); L6 CANCEL | static staging text |
 | `FPLN-RESULT` | PREFILE | after send | L6 FPLN; R5 DATALINK→DL-INDEX | PREFILED/ALREADY FILED, label, leg id, warnings |
+
+**`CFG NETWORK` L2 (token) two-step entry.** `L2` on an empty, unmasked
+scratchpad arms token entry: the scratchpad then shows dots as you type. `L2`
+again while armed commits the typed value as the pending token, or shows
+`ENTER TOKEN` if nothing was typed yet. Typing before arming leaves the entry
+in the clear; pressing `L2` in that state answers `L2 FIRST THEN TOKEN` and
+drops the entry rather than storing it as the token. While armed, pressing
+`L1` or `L3` answers `TOKEN ARMED · USE L2` and leaves that field untouched.
+`CLR` backspaces the masked entry one character at a time and disarms once it
+empties; a `CLR` on an already-empty armed scratchpad also disarms. Changing
+pages always disarms. URL and certificate path entries are never masked.
 
 **`DL-CLEARANCE` paging change (this run).** Adding `SEND PDC>` to row 10 on
 every page cost the route block one line per page: `PAGE1_ROUTE_LINES` went
@@ -445,6 +457,8 @@ underlying cause is shared):
 | `COMMAND FAILED` | A page's key/LSK handler threw |
 | `NOT ALLOWED` | An inactive LSK (`L1`–`L5`) pressed on `STATUS` |
 | `INVALID ENTRY` | A CFG field failed validation |
+| `L2 FIRST THEN TOKEN` | `CFG NETWORK` `L2` pressed with an un-armed, non-empty scratchpad entry; the entry is dropped rather than stored |
+| `TOKEN ARMED · USE L2` | `CFG NETWORK` `L1` or `L3` pressed while token entry is armed; that field is left untouched |
 | `ENTRY OUT OF RANGE` | `trafficRadiusM` outside `[1000, 200000]` |
 | `USING DEFAULT 40000` | A non-numeric `trafficRadiusM` entry, applied instead of rejected |
 | `CHECKED ON SAVE` | Advisory after entering `certPath` — the shell only checks the file's readability once the page is saved |
