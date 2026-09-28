@@ -267,10 +267,18 @@ try {
   current = 'window-minimum';
   await page.setViewport({ width: 488, height: 680, deviceScaleFactor: 1 });
   await show('STATUS'); await emit(snapshot());
-  assert.equal(await page.evaluate(() => {
-    const unit = document.getElementById('fmc-unit').getBoundingClientRect();
-    return unit.left >= 0 && unit.top >= 0 && unit.right <= innerWidth && unit.bottom <= innerHeight;
-  }), true, 'minimum window clips panel');
+  // The unit is the window now, so "the panel fits" is a statement about its
+  // contents: --fmc-scale divides the window by --fmc-unit-w/h, and a layout
+  // that has outgrown those two numbers overflows a bezel that clips it
+  // silently — there is no scrollbar left to notice.
+  assert.deepEqual(await page.evaluate(() => {
+    const unit = document.getElementById('fmc-unit');
+    const box = unit.getBoundingClientRect();
+    return {
+      fills: Math.abs(box.width - innerWidth) < 0.5 && Math.abs(box.height - innerHeight) < 0.5,
+      clipped: unit.scrollWidth > unit.clientWidth || unit.scrollHeight > unit.clientHeight,
+    };
+  }), { fills: true, clipped: false }, 'minimum window: unit must fill it without clipping its own chrome');
   // The panel fitting the window doesn't mean the CDU content fits the
   // screen: --fmc-cols sets the grid's width directly in ch, independent of
   // the screen's actual box, so a wide column count can overflow its own
@@ -281,7 +289,7 @@ try {
     return screen.scrollWidth <= screen.clientWidth;
   }), true, 'CDU content overflows its own screen at the minimum window width');
   await capture('window-minimum');
-  console.log('PASS window-minimum: panel fits 488x680, CDU content fits the screen');
+  console.log('PASS window-minimum: unit fills 488x680 unclipped, CDU content fits the screen');
   clean();
   console.log('PASS browser errors: none (pageerror and console error both fatal)');
 } catch (error) {

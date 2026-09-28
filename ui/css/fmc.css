@@ -4,11 +4,14 @@
    config text here run longer than a real CDU's short commands, and 24
    read as cramped), six line-select keys down each side physically
    aligned with their rows, and a key grid below. Everything is sized in ch/em
-   off one root font size so the whole unit scales with the window without the
-   grid ever reflowing — a screenshot of this panel is meant to be evidence,
-   so nothing animates except the pressed state of a key and the scratchpad
-   cursor. The font stack is local-only: this app runs offline on a flight-sim
-   PC and must never wait on a webfont that will not arrive. */
+   off one scale, --fmc-scale, so the whole unit grows with the window without
+   the grid ever reflowing. The unit is the window: it fills it edge to edge,
+   and whichever axis runs out of room first sets the scale, so the slack shows
+   as more bezel and never as a background margin around a floating panel. A
+   screenshot of this panel is meant to be evidence, so nothing animates except
+   the pressed state of a key and the scratchpad cursor. The font stack is
+   local-only: this app runs offline on a flight-sim PC and must never wait on
+   a webfont that will not arrive. */
 
 :root {
   --fmc-bezel: #2E3033;
@@ -26,7 +29,14 @@
   --fmc-key-text: #DDE2DE;
 
   --fmc-font: "Consolas", "Lucida Console", "DejaVu Sans Mono", "Courier New", monospace;
-  --fmc-screen-font-size: clamp(11px, 1.55vh, 20px);
+  /* One scale drives the whole unit. --fmc-unit-w and --fmc-unit-h are the
+     unit's own width and height measured in that scale, so fitting it to the
+     window is one division; keep them in step with the layout, because a key
+     row or a new --fmc-cols moves them. The screen font is the scale itself. */
+  --fmc-unit-w: 37.5;
+  --fmc-unit-h: 49.2;
+  --fmc-scale: min(100vw / var(--fmc-unit-w), 100vh / var(--fmc-unit-h));
+  --fmc-screen-font-size: 1em;
   --fmc-row-h: 2.05em;
   --fmc-cols: 50;
   --fmc-screen-pad: 0.9em;
@@ -43,12 +53,8 @@ body {
 }
 
 body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.2vh 1vw;
-  background:
-    radial-gradient(ellipse at 50% 0%, #26282B 0%, #121314 70%, #0C0D0E 100%);
+  overflow: hidden;
+  background: var(--fmc-bezel);
   color: var(--fmc-key-text);
   font-family: var(--fmc-font);
   -webkit-font-smoothing: antialiased;
@@ -57,28 +63,29 @@ body {
 /* ── The unit ─────────────────────────────────────────────────────────── */
 
 #fmc-unit {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.8vh;
-  padding: 1.1vh 1.1vh 1.4vh;
-  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  padding: 0.5em 0.5em 0.6em;
+  overflow: hidden;
+  font-size: var(--fmc-scale);
   background: linear-gradient(180deg, #33363A 0%, var(--fmc-bezel) 22%, #26282B 100%);
-  border-top: 2px solid var(--fmc-bezel-light);
-  border-left: 2px solid var(--fmc-bezel-light);
-  border-right: 2px solid var(--fmc-bezel-edge);
-  border-bottom: 3px solid var(--fmc-bezel-edge);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.5),
-    0 14px 34px rgba(0, 0, 0, 0.62);
+    inset 0 -2px 6px rgba(0, 0, 0, 0.5);
 }
 
 .unit-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  align-self: stretch;
   padding: 0 0.4em;
-  font-size: 0.68rem;
+  font-size: 0.62em;
   letter-spacing: 0.22em;
   color: #9AA39C;
   text-shadow: 0 1px 0 var(--fmc-bezel-edge);
@@ -304,6 +311,7 @@ body {
 }
 
 .lsk {
+  font-size: inherit;
   width: 2.6em;
   height: 1.35em;
   align-self: center;
@@ -353,12 +361,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1em;
-  min-height: 1.5em;
+  gap: 0.6em;
+  min-height: 0.95em;
   margin: 0 auto;
-  padding: 0.15em 0.5em;
-  width: min(100%, 34em);
-  font-size: 0.66rem;
+  padding: 0.05em 0.3em;
+  /* The same width as the glass above it, from the same two tokens, so the
+     strip lines up under the screen instead of floating over the bezel. */
+  width: min(100%, calc(var(--fmc-cols) * 1ch + var(--fmc-screen-pad) * 2));
   letter-spacing: 0.08em;
   border-radius: 3px;
   background: #232528;
@@ -368,6 +377,7 @@ body {
 
 #msg-line {
   flex: 1;
+  font-size: 0.6em;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -382,6 +392,7 @@ body {
 }
 
 #bridge-mode {
+  font-size: 0.6em;
   color: var(--fmc-dim);
 }
 
@@ -392,11 +403,11 @@ body {
 /* ── Key grids ────────────────────────────────────────────────────────── */
 
 .unit-keys {
-  font-size: clamp(11px, 3vw, 16px);
+  font-size: 0.95em;
   display: flex;
   justify-content: center;
   gap: 1.4em;
-  padding-top: 0.4vh;
+  padding-top: 0.3em;
 }
 
 .key-block {
@@ -435,7 +446,7 @@ body {
   border-radius: 4px;
   cursor: pointer;
   font-family: var(--fmc-font);
-  font-size: 0.74rem;
+  font-size: inherit;
   letter-spacing: 0.04em;
   color: var(--fmc-key-text);
   background: linear-gradient(180deg, #4B4E53 0%, var(--fmc-key-face) 52%, #2F3236 100%);
