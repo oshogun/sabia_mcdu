@@ -1579,6 +1579,225 @@ test('cfg network: the token is typed only after L2 arms a masked entry, and nev
   assert.equal(seen.includes('SENTINEL'), false);
 });
 
+test('app shell keyboard a11y: modality gates Enter/Space, F-keys reach the LSKs, and the announcer repeats itself', async (t) => {
+  const { Element, document, press, fire } = bootDocument();
+  const { host } = await bootMock();
+  const saved = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
+  globalThis.setInterval = () => ({ fake: true });
+  globalThis.clearInterval = () => {};
+  const winListeners = new Map();
+  const win = {
+    __FMC_HOST__: host,
+    addEventListener: (type, fn) => winListeners.set(type, [...(winListeners.get(type) || []), fn]),
+  };
+  Object.assign(globalThis, { window: win, document, Node: Element, Element });
+  t.after(() => {
+    Object.assign(globalThis, saved);
+    for (const name of ['window', 'document', 'Node', 'Element']) delete globalThis[name];
+  });
+  await import(new URL('../../ui/src/app.js?keyboard-a11y', import.meta.url));
+  const screen = document.getElementById('fmc-screen');
+  const scratchpad = document.getElementById('scratchpad');
+  const announcer = document.getElementById('fmc-announcer');
+  const landOn = async (id) => {
+    for (let i = 0; i < 400 && screen.getAttribute('data-page') !== id; i += 1) await later(5);
+    assert.equal(screen.getAttribute('data-page'), id);
+    await settle();
+  };
+  const queried = [];
+  const baseQuery = document.querySelector;
+  document.querySelector = (selector) => { queried.push(selector); return baseQuery(selector); };
+  const key = (props) => ({ ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, target: {}, preventDefault() { this.prevented = true; }, ...props });
+
+  press('data-key', 'MENU');
+  await landOn('MENU');
+
+  // F1..F6 press L1..L6; only F1..F6 are captured.
+  let event = key({ key: 'F1' });
+  fire('keydown', event);
+  await landOn('STATUS');
+  assert.equal(event.prevented, true);
+
+  press('data-key', 'MENU');
+  await landOn('MENU');
+  event = key({ key: 'F7' });
+  fire('keydown', event);
+  await settle();
+  assert.equal(event.prevented, undefined, 'F7 is left to the browser (devtools/caret browsing)');
+  assert.equal(screen.getAttribute('data-page'), 'MENU');
+
+  // Shift+F1..F6 press R1..R6; MENU has no R-side items, so it is KEY NOT ACTIVE.
+  event = key({ key: 'F1', shiftKey: true });
+  fire('keydown', event);
+  await settle();
+  assert.equal(scratchpad.textContent, 'KEY NOT ACTIVE');
+
+  // A Tab-focused key/LSK is left for the browser's own Enter/Space activation.
+  fire('keydown', key({ key: 'Tab' }));
+  const focusedLsk = new Element();
+  focusedLsk.setAttribute('data-lsk', 'L2');
+  event = key({ key: 'Enter', target: focusedLsk });
+  fire('keydown', event);
+  await settle();
+  assert.equal(event.prevented, undefined, 'keyboard focus: Enter is not intercepted');
+  assert.equal(screen.getAttribute('data-page'), 'MENU', 'the FMC itself never ran the LSK');
+
+  // A pointerdown drops keyboard modality: the same target's Enter is EXEC again.
+  fire('pointerdown', { target: { closest: () => null } });
+  event = key({ key: 'Enter', target: focusedLsk });
+  fire('keydown', event);
+  await settle();
+  assert.equal(event.prevented, true, 'mouse focus: Enter still maps to EXEC');
+  assert.equal(scratchpad.textContent, 'KEY NOT ACTIVE', 'MENU has no EXEC handler');
+
+  // A lowercase letter flashes its uppercase face but keeps its own case on the scratchpad.
+  press('data-lsk', 'L2');
+  await landOn('NETWORK');
+  queried.length = 0;
+  fire('keydown', key({ key: 'a' }));
+  await settle();
+  assert.ok(queried.includes('[data-key="A"]'), queried.join(','));
+  assert.equal(scratchpad.textContent, 'a');
+
+  // The announcer repeats an unchanged message: it is emptied and refilled every time.
+  press('data-lsk', 'R1');
+  assert.equal(announcer.textContent, '', 'emptied synchronously before the next tick fills it');
+  await later(10);
+  assert.equal(announcer.textContent, 'KEY NOT ACTIVE');
+  press('data-lsk', 'R1');
+  assert.equal(announcer.textContent, '', 'the same message is emptied again, not left alone');
+  await later(10);
+  assert.equal(announcer.textContent, 'KEY NOT ACTIVE');
+});
+
+test('app shell message line: a warn/error text announces once, a changed one again, and info never does', async (t) => {
+  const { Element, document } = bootDocument();
+  const { host, gaugeDev } = await bootMock();
+  const saved = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
+  globalThis.setInterval = () => ({ fake: true });
+  globalThis.clearInterval = () => {};
+  Object.assign(globalThis, { window: { __FMC_HOST__: host }, document, Node: Element, Element });
+  const getConfig = host.getConfig;
+  t.after(() => {
+    host.getConfig = getConfig;
+    Object.assign(globalThis, saved);
+    for (const name of ['window', 'document', 'Node', 'Element']) delete globalThis[name];
+  });
+  await import(new URL('../../ui/src/app.js?msgline-dedup', import.meta.url));
+  const { FMC } = globalThis.window;
+  const announcer = document.getElementById('fmc-announcer');
+  const msgLine = document.getElementById('msg-line');
+  // Let boot's own config read land before taking over host.getConfig below.
+  await settle();
+
+  // A warn/error message line is announced.
+  gaugeDev.emitExit();
+  await later(10);
+  assert.deepEqual([msgLine.textContent, msgLine.getAttribute('data-level'), announcer.textContent],
+    ['SIDECAR EXIT 1', 'error', 'SIDECAR EXIT 1']);
+
+  // The identical text repeated is not re-announced: announce() empties the
+  // node before its refill, so an untouched value proves it was never called.
+  gaugeDev.emitExit();
+  assert.equal(announcer.textContent, 'SIDECAR EXIT 1', 'unchanged synchronously: announce() was not invoked again');
+  await later(10);
+  assert.equal(announcer.textContent, 'SIDECAR EXIT 1');
+
+  // A genuinely different warn/error text is announced again.
+  host.getConfig = async () => { throw new Error('boom'); };
+  await FMC.refreshConfig();
+  host.getConfig = getConfig;
+  await later(10);
+  assert.deepEqual([msgLine.textContent, announcer.textContent], ['CONFIG READ FAILED', 'CONFIG READ FAILED']);
+
+  // An info-level line is never announced, even with text never seen before.
+  const before = announcer.textContent;
+  gaugeDev.emitLog('JUST FOR INFO');
+  await later(10);
+  assert.deepEqual([msgLine.textContent, msgLine.getAttribute('data-level'), announcer.textContent],
+    ['JUST FOR INFO', 'info', before]);
+});
+
+test('app shell: describePlaceholder speaks a whole-run placeholder, and leaves everything else exactly as painted', async (t) => {
+  const { Element, document } = bootDocument();
+  const { host } = await bootMock();
+  const saved = { setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
+  globalThis.setInterval = () => ({ fake: true });
+  globalThis.clearInterval = () => {};
+  Object.assign(globalThis, { window: { __FMC_HOST__: host }, document, Node: Element, Element });
+  t.after(() => {
+    Object.assign(globalThis, saved);
+    for (const name of ['window', 'document', 'Node', 'Element']) delete globalThis[name];
+  });
+  const { describePlaceholder } = await import(new URL('../../ui/src/app.js?placeholder-mapping', import.meta.url));
+
+  assert.equal(describePlaceholder('••••••••'), 'SET');
+  assert.equal(describePlaceholder('•'), 'SET');
+  assert.equal(describePlaceholder('□□□□□□□□'), 'EMPTY, REQUIRED');
+  assert.equal(describePlaceholder('□□□□'), 'EMPTY, REQUIRED');
+  assert.equal(describePlaceholder('--------'), 'EMPTY');
+  assert.equal(describePlaceholder('----'), 'EMPTY');
+  assert.equal(describePlaceholder('---'), '---', 'fewer than four dashes is left as is');
+  assert.equal(describePlaceholder('https://cfg.example/a'), 'https://cfg.example/a');
+  assert.equal(describePlaceholder('SET•'), 'SET•', 'a glyph inside real text is left as is');
+  assert.equal(describePlaceholder(''), '');
+});
+
+test('status.js: renderStatus writes only what changed, including classList.toggle on restart-prompt', async () => {
+  const { renderStatus, defaultStatus } = await import(new URL('../../ui/src/status.js', import.meta.url));
+
+  const fakeElement = () => {
+    let text = '';
+    const attrs = {};
+    const classes = new Set();
+    let writes = 0;
+    return {
+      get textContent() { return text; },
+      set textContent(value) { writes += 1; text = String(value); },
+      getAttribute: (name) => (name in attrs ? attrs[name] : null),
+      setAttribute: (name, value) => { writes += 1; attrs[name] = String(value); },
+      classList: {
+        contains: (name) => classes.has(name),
+        // A real DOMTokenList writes the class attribute on every toggle()
+        // call regardless of whether the token set actually changes, so the
+        // stub does too: this is what makes the source's own guard (calling
+        // toggle only when the class differs) the thing under test here.
+        toggle: (name, force) => {
+          const want = force === undefined ? !classes.has(name) : force;
+          writes += 1;
+          if (want) classes.add(name); else classes.delete(name);
+          return want;
+        },
+      },
+      writes: () => writes,
+    };
+  };
+  const ids = ['status-app', 'status-sim', 'status-net', 'status-pause', 'status-traffic', 'uplink-prompt', 'restart-prompt'];
+  const els = new Map(ids.map((id) => [`#${id}`, fakeElement()]));
+  const root = { querySelector: (selector) => els.get(selector) || null };
+  const totalWrites = () => [...els.values()].reduce((sum, el) => sum + el.writes(), 0);
+
+  const status = defaultStatus();
+  renderStatus(root, status, { now: 1000 });
+  const afterFirst = totalWrites();
+  assert.ok(afterFirst > 0, 'the first render writes something');
+
+  renderStatus(root, status, { now: 1000 });
+  assert.equal(totalWrites(), afterFirst, 'an unchanged snapshot performs no second write, on any element');
+
+  // A later, still-unchanged render (a different `now`, same everything else
+  // that is actually painted) still writes nothing.
+  renderStatus(root, status, { now: 5000 });
+  assert.equal(totalWrites(), afterFirst);
+
+  // A real change still writes, including the restart-prompt's class toggle.
+  const restartWritesBefore = els.get('#restart-prompt').writes();
+  const crashed = { ...status, app: { state: 'app.crashed' } };
+  renderStatus(root, crashed, { now: 5000 });
+  assert.ok(totalWrites() > afterFirst, 'a real change still writes');
+  assert.ok(els.get('#restart-prompt').writes() > restartWritesBefore, 'the crash flips restart-prompt');
+});
+
 test('fpln settings: PREFILE is offered only with a Pilot ID, and without one R6 calls nothing', async (t) => {
   const ui = await mountDatalinkPages(t, 'fpln-settings', { fpln: true });
   const { shell, fmc, gaugeDev, rows, pages } = ui;

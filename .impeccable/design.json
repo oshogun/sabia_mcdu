@@ -1,0 +1,541 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T18:11:14.716Z",
+  "title": "Design System: Sabiá CDU",
+  "extensions": {
+    "colorMeta": {
+      "avionics-green": {
+        "role": "primary",
+        "displayName": "Avionics Green",
+        "canonical": "#28E06E",
+        "oklch": "oklch(79.6% 0.210 150.0)",
+        "tonalRamp": [
+          "#001003",
+          "#012E11",
+          "#015021",
+          "#017534",
+          "#079C48",
+          "#28C461",
+          "#94DEA3",
+          "#DFF5E3"
+        ]
+      },
+      "entry-cyan": {
+        "role": "secondary",
+        "displayName": "Entry Cyan",
+        "canonical": "#4FD8F0",
+        "oklch": "oklch(81.8% 0.120 211.5)",
+        "tonalRamp": [
+          "#000E11",
+          "#002B32",
+          "#044B56",
+          "#056E7D",
+          "#0792A6",
+          "#3FB7CC",
+          "#99D5E1",
+          "#E1F2F6"
+        ]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "#E0A21A",
+        "oklch": "oklch(75.2% 0.150 79.9)",
+        "tonalRamp": [
+          "#120900",
+          "#322201",
+          "#583C00",
+          "#7F5A04",
+          "#A97805",
+          "#D19A2F",
+          "#E5C48E",
+          "#F7EDDD"
+        ]
+      },
+      "fault-red": {
+        "role": "tertiary",
+        "displayName": "Fault Red",
+        "canonical": "#F25E55",
+        "oklch": "oklch(67.2% 0.184 26.7)",
+        "tonalRamp": [
+          "#1F0001",
+          "#4D0004",
+          "#81000B",
+          "#B21C1F",
+          "#DB4842",
+          "#FB776C",
+          "#FFB3AA",
+          "#FEE9E6"
+        ]
+      },
+      "legend-white": {
+        "role": "neutral",
+        "displayName": "Legend White",
+        "canonical": "#E8EDE9",
+        "oklch": "oklch(94.1% 0.008 151.9)",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#232623",
+          "#3F4340",
+          "#5E625F",
+          "#7F8480",
+          "#A2A6A3",
+          "#C7CAC8",
+          "#EEEFEE"
+        ]
+      },
+      "idle-sage": {
+        "role": "neutral",
+        "displayName": "Idle Sage",
+        "canonical": "#7E9285",
+        "oklch": "oklch(64.0% 0.030 157.0)",
+        "tonalRamp": [
+          "#070D09",
+          "#1B2920",
+          "#35473C",
+          "#54675A",
+          "#74887B",
+          "#98AA9E",
+          "#C1CCC5",
+          "#ECEFED"
+        ]
+      },
+      "night-glass": {
+        "role": "neutral",
+        "displayName": "Night Glass",
+        "canonical": "#0A1410",
+        "oklch": "oklch(18.0% 0.017 167.5)",
+        "tonalRamp": [
+          "#080C0A",
+          "#1E2724",
+          "#3A4540",
+          "#58645F",
+          "#798680",
+          "#9DA8A3",
+          "#C4CBC8",
+          "#EDEFEE"
+        ]
+      },
+      "glass-glow": {
+        "role": "neutral",
+        "displayName": "Glass Glow",
+        "canonical": "#10241A",
+        "oklch": "oklch(24.0% 0.033 160.8)",
+        "tonalRamp": [
+          "#060D09",
+          "#192921",
+          "#33483C",
+          "#51675B",
+          "#72897C",
+          "#96AB9F",
+          "#C0CDC5",
+          "#ECF0ED"
+        ]
+      },
+      "bezel-grey": {
+        "role": "neutral",
+        "displayName": "Bezel Grey",
+        "canonical": "#2E3033",
+        "oklch": "oklch(30.8% 0.006 258.4)",
+        "tonalRamp": [
+          "#0A0B0C",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A3A5A8",
+          "#C8C9CB",
+          "#EEEEEF"
+        ]
+      },
+      "bezel-top": {
+        "role": "neutral",
+        "displayName": "Bezel Top",
+        "canonical": "#33363A",
+        "oklch": "oklch(33.2% 0.008 255.6)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232528",
+          "#3F4246",
+          "#5E6166",
+          "#7F8387",
+          "#A2A5AA",
+          "#C7C9CC",
+          "#EEEEEF"
+        ]
+      },
+      "bezel-bottom": {
+        "role": "neutral",
+        "displayName": "Bezel Bottom",
+        "canonical": "#26282B",
+        "oklch": "oklch(27.6% 0.006 258.4)",
+        "tonalRamp": [
+          "#0A0B0C",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A3A5A9",
+          "#C8C9CB",
+          "#EEEEEF"
+        ]
+      },
+      "bezel-light": {
+        "role": "neutral",
+        "displayName": "Bezel Light",
+        "canonical": "#45484C",
+        "oklch": "oklch(40.0% 0.008 255.5)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232528",
+          "#3F4246",
+          "#5E6166",
+          "#7F8387",
+          "#A2A5A9",
+          "#C7C9CC",
+          "#EEEEEF"
+        ]
+      },
+      "bezel-edge": {
+        "role": "neutral",
+        "displayName": "Bezel Edge",
+        "canonical": "#17181A",
+        "oklch": "oklch(20.9% 0.004 264.5)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242527",
+          "#414244",
+          "#606164",
+          "#818285",
+          "#A4A5A7",
+          "#C8C9CA",
+          "#EEEEEF"
+        ]
+      },
+      "screen-lip": {
+        "role": "neutral",
+        "displayName": "Screen Lip",
+        "canonical": "#3D4044",
+        "oklch": "oklch(37.0% 0.008 255.5)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232528",
+          "#3F4246",
+          "#5E6166",
+          "#7F8387",
+          "#A2A5A9",
+          "#C7C9CC",
+          "#EEEEEF"
+        ]
+      },
+      "strip-grey": {
+        "role": "neutral",
+        "displayName": "Strip Grey",
+        "canonical": "#232528",
+        "oklch": "oklch(26.4% 0.006 258.4)",
+        "tonalRamp": [
+          "#0A0B0C",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A3A5A9",
+          "#C8C9CB",
+          "#EEEEEF"
+        ]
+      },
+      "plate-text": {
+        "role": "neutral",
+        "displayName": "Plate Text",
+        "canonical": "#9AA39C",
+        "oklch": "oklch(70.6% 0.014 152.5)",
+        "tonalRamp": [
+          "#090C0A",
+          "#212722",
+          "#3D443E",
+          "#5B645D",
+          "#7C857E",
+          "#9FA7A1",
+          "#C6CBC7",
+          "#EDEFEE"
+        ]
+      },
+      "key-face": {
+        "role": "neutral",
+        "displayName": "Key Face",
+        "canonical": "#3A3D41",
+        "oklch": "oklch(35.9% 0.008 255.5)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232528",
+          "#3F4246",
+          "#5E6166",
+          "#7F8387",
+          "#A2A5A9",
+          "#C7C9CC",
+          "#EEEEEF"
+        ]
+      },
+      "key-hi": {
+        "role": "neutral",
+        "displayName": "Key Highlight",
+        "canonical": "#4B4E53",
+        "oklch": "oklch(42.3% 0.009 260.7)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232529",
+          "#3F4247",
+          "#5E6167",
+          "#7F8288",
+          "#A2A5AA",
+          "#C7C9CC",
+          "#EEEEEF"
+        ]
+      },
+      "key-lo": {
+        "role": "neutral",
+        "displayName": "Key Shade",
+        "canonical": "#2F3236",
+        "oklch": "oklch(31.6% 0.008 255.6)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232528",
+          "#3F4246",
+          "#5E6166",
+          "#7F8387",
+          "#A2A5AA",
+          "#C7C9CC",
+          "#EEEEEF"
+        ]
+      },
+      "key-legend": {
+        "role": "neutral",
+        "displayName": "Key Legend",
+        "canonical": "#DDE2DE",
+        "oklch": "oklch(90.8% 0.008 151.9)",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#232623",
+          "#3F4340",
+          "#5E625F",
+          "#7F8480",
+          "#A2A6A3",
+          "#C7CAC8",
+          "#EEEFEE"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "screen-data": {
+        "displayName": "Screen data",
+        "purpose": "Value rows, prompts and the scratchpad; one grid row tall."
+      },
+      "screen-title": {
+        "displayName": "Screen title",
+        "purpose": "The page title row; the level-1 heading for assistive tech."
+      },
+      "screen-label": {
+        "displayName": "Screen label",
+        "purpose": "Small label over each value; the floor for informational text."
+      },
+      "page-number": {
+        "displayName": "Page number",
+        "purpose": "n/m at the right of the title row."
+      },
+      "key-legend": {
+        "displayName": "Key legend",
+        "purpose": "Key-cap lettering."
+      },
+      "annunciator": {
+        "displayName": "Annunciator",
+        "purpose": "Message line and host label under the glass."
+      },
+      "plate": {
+        "displayName": "Plate",
+        "purpose": "SABIÁ wordmark and CDU-1 badge; a logotype, not information."
+      }
+    },
+    "shadows": [
+      {
+        "name": "key-raised",
+        "value": "inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 2px rgba(0,0,0,0.45)",
+        "purpose": "Every key cap and LSK at rest."
+      },
+      {
+        "name": "key-sunk",
+        "value": "inset 0 1px 3px rgba(0,0,0,0.65)",
+        "purpose": "A pressed key, with the flipped cap gradient and translateY(1px)."
+      },
+      {
+        "name": "glass-recess",
+        "value": "inset 0 2px 10px rgba(0,0,0,0.85), 0 1px 0 #45484C",
+        "purpose": "The screen set into the bezel."
+      },
+      {
+        "name": "strip-inset",
+        "value": "inset 0 1px 2px rgba(0,0,0,0.6)",
+        "purpose": "The annunciator strip."
+      }
+    ],
+    "motion": [
+      {
+        "name": "key-press",
+        "value": "translateY(1px), ~110ms flash, no easing",
+        "purpose": "The only interaction motion."
+      },
+      {
+        "name": "cursor-blink",
+        "value": "1s step-end infinite; none under prefers-reduced-motion",
+        "purpose": "Scratchpad cursor."
+      }
+    ],
+    "breakpoints": [],
+    "scale": {
+      "note": "No breakpoints. --fmc-scale = min(100vw / 37.5, 100vh / 49.35); every size is em/ch of it.",
+      "unitW": 37.5,
+      "unitH": 49.35,
+      "cols": 50,
+      "rows": 14
+    }
+  },
+  "components": [
+    {
+      "name": "Line-select key",
+      "kind": "button",
+      "refersTo": "line-select-key",
+      "description": "Unlabelled bezel key beside a screen row; the screen says what it does.",
+      "html": "<div class=\"ds-bezel\"><button class=\"ds-lsk\" aria-label=\"L1, SERVER URL, HTTPS://SABIA.LAN\"></button><button class=\"ds-lsk\" aria-label=\"R6, SAVE&gt;\"></button></div>",
+      "css": ".ds-bezel { display: inline-flex; gap: 16px; padding: 16px; background: var(--fmc-bezel, #2E3033); border-radius: 4px; } .ds-lsk { width: 39px; height: 20px; padding: 0; border: 0; border-radius: 3px; cursor: pointer; background: linear-gradient(180deg, var(--fmc-key-hi, #4B4E53) 0%, var(--fmc-key-face, #3A3D41) 52%, var(--fmc-key-lo, #2F3236) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 2px rgba(0,0,0,0.45); } .ds-lsk:hover { filter: brightness(1.06); } .ds-lsk:active { transform: translateY(1px); background: linear-gradient(180deg, var(--fmc-key-lo, #2F3236) 0%, var(--fmc-key-face, #3A3D41) 48%, var(--fmc-key-hi, #4B4E53) 100%); box-shadow: inset 0 1px 3px rgba(0,0,0,0.65); } .ds-lsk:focus-visible { outline: 1px solid var(--fmc-cyan, #4FD8F0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Key",
+      "kind": "button",
+      "refersTo": "key",
+      "description": "Alphanumeric key cap; the pressed state sinks the cap.",
+      "html": "<div class=\"ds-bezel\"><button class=\"ds-key\">A</button><button class=\"ds-key\">7</button><button class=\"ds-key ds-key-wide\">CLR</button></div>",
+      "css": ".ds-bezel { display: inline-flex; gap: 7px; padding: 16px; background: var(--fmc-bezel, #2E3033); border-radius: 4px; } .ds-key { font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 15px; letter-spacing: 0.04em; height: 30px; min-width: 42px; padding: 0 3px; border: 0; border-radius: 4px; cursor: pointer; background: linear-gradient(180deg, var(--fmc-key-hi, #4B4E53) 0%, var(--fmc-key-face, #3A3D41) 52%, var(--fmc-key-lo, #2F3236) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 2px rgba(0,0,0,0.45); text-shadow: 0 1px 0 rgba(0,0,0,0.55); color: var(--fmc-key-text, #DDE2DE); } .ds-key-wide { min-width: 42px; } .ds-key:hover { filter: brightness(1.06); } .ds-key:active { transform: translateY(1px); background: linear-gradient(180deg, var(--fmc-key-lo, #2F3236) 0%, var(--fmc-key-face, #3A3D41) 48%, var(--fmc-key-hi, #4B4E53) 100%); box-shadow: inset 0 1px 3px rgba(0,0,0,0.65); } .ds-key:focus-visible { outline: 1px solid var(--fmc-cyan, #4FD8F0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Function key",
+      "kind": "button",
+      "refersTo": "key-function",
+      "description": "MENU, PREV and NEXT: the same cap with Legend White lettering.",
+      "html": "<div class=\"ds-bezel\"><button class=\"ds-key-fn\">MENU</button><button class=\"ds-key-fn\">PREV</button><button class=\"ds-key-fn\">NEXT</button></div>",
+      "css": ".ds-bezel { display: inline-flex; gap: 7px; padding: 16px; background: var(--fmc-bezel, #2E3033); border-radius: 4px; } .ds-key-fn { font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 15px; letter-spacing: 0.04em; height: 30px; min-width: 42px; padding: 0 3px; border: 0; border-radius: 4px; cursor: pointer; background: linear-gradient(180deg, var(--fmc-key-hi, #4B4E53) 0%, var(--fmc-key-face, #3A3D41) 52%, var(--fmc-key-lo, #2F3236) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 2px rgba(0,0,0,0.45); text-shadow: 0 1px 0 rgba(0,0,0,0.55); color: var(--fmc-white, #E8EDE9); } .ds-key-fn:hover { filter: brightness(1.06); } .ds-key-fn:active { transform: translateY(1px); background: linear-gradient(180deg, var(--fmc-key-lo, #2F3236) 0%, var(--fmc-key-face, #3A3D41) 48%, var(--fmc-key-hi, #4B4E53) 100%); box-shadow: inset 0 1px 3px rgba(0,0,0,0.65); } .ds-key-fn:focus-visible { outline: 1px solid var(--fmc-cyan, #4FD8F0); outline-offset: 1px; }"
+    },
+    {
+      "name": "EXEC key",
+      "kind": "button",
+      "refersTo": "key-exec",
+      "description": "Commits the page's pending action; wider cap, Avionics Green lettering.",
+      "html": "<div class=\"ds-bezel\"><button class=\"ds-key-exec\">EXEC</button></div>",
+      "css": ".ds-bezel { display: inline-flex; padding: 16px; background: var(--fmc-bezel, #2E3033); border-radius: 4px; } .ds-key-exec { font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 15px; letter-spacing: 0.04em; height: 30px; min-width: 42px; padding: 0 3px; border: 0; border-radius: 4px; cursor: pointer; background: linear-gradient(180deg, var(--fmc-key-hi, #4B4E53) 0%, var(--fmc-key-face, #3A3D41) 52%, var(--fmc-key-lo, #2F3236) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 2px rgba(0,0,0,0.45); text-shadow: 0 1px 0 rgba(0,0,0,0.55); min-width: 63px; color: var(--fmc-green, #28E06E); } .ds-key-exec:hover { filter: brightness(1.06); } .ds-key-exec:active { transform: translateY(1px); background: linear-gradient(180deg, var(--fmc-key-lo, #2F3236) 0%, var(--fmc-key-face, #3A3D41) 48%, var(--fmc-key-hi, #4B4E53) 100%); box-shadow: inset 0 1px 3px rgba(0,0,0,0.65); } .ds-key-exec:focus-visible { outline: 1px solid var(--fmc-cyan, #4FD8F0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Screen rows",
+      "kind": "custom",
+      "refersTo": "screen",
+      "description": "Title row, label/value pairs and prompts on the night glass.",
+      "html": "<div class=\"ds-glass\"><div class=\"ds-row ds-title\">CFG NETWORK</div><div class=\"ds-row ds-label\">SERVER URL</div><div class=\"ds-row ds-value\">HTTPS://SABIA.LAN</div><div class=\"ds-row ds-label\">INGEST TOKEN</div><div class=\"ds-row ds-value ds-edited\">••••••••</div><div class=\"ds-row ds-prompts\"><span>&lt;INDEX</span><span>SAVE&gt;</span></div></div>",
+      "css": ".ds-glass { font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 15px; line-height: 30px; padding: 13px; border-radius: 5px; background: radial-gradient(ellipse at 50% 45%, var(--fmc-screen-glow, #10241A) 0%, rgba(10,20,16,0) 62%), var(--fmc-screen, #0A1410); border-top: 2px solid #17181A; border-left: 2px solid #17181A; border-right: 1px solid #3D4044; border-bottom: 1px solid #3D4044; box-shadow: inset 0 2px 10px rgba(0,0,0,0.85), 0 1px 0 #45484C; width: 30ch; } .ds-row { height: 30px; display: flex; justify-content: space-between; white-space: pre; } .ds-title { justify-content: center; color: var(--fmc-white, #E8EDE9); letter-spacing: 0.1em; border-bottom: 1px solid rgba(40,224,110,0.16); } .ds-label { font-size: 0.76em; line-height: 1; letter-spacing: 0.06em; align-items: flex-end; padding-bottom: 2px; color: var(--fmc-white, #E8EDE9); } .ds-value { color: var(--fmc-green, #28E06E); } .ds-edited { color: var(--fmc-cyan, #4FD8F0); } .ds-prompts { color: var(--fmc-white, #E8EDE9); }"
+    },
+    {
+      "name": "Scratchpad",
+      "kind": "input",
+      "refersTo": "screen",
+      "description": "The single input line: entry with cyan cursor, error and advisory overlays.",
+      "html": "<div class=\"ds-glass\"><div class=\"ds-pad\">KLAX<span class=\"ds-cursor\">█</span></div><div class=\"ds-pad ds-error\">KEY NOT ACTIVE</div><div class=\"ds-pad ds-advisory\">CHECKED ON SAVE</div></div>",
+      "css": ".ds-glass { font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 15px; line-height: 30px; padding: 13px; border-radius: 5px; background: radial-gradient(ellipse at 50% 45%, var(--fmc-screen-glow, #10241A) 0%, rgba(10,20,16,0) 62%), var(--fmc-screen, #0A1410); border-top: 2px solid #17181A; border-left: 2px solid #17181A; border-right: 1px solid #3D4044; border-bottom: 1px solid #3D4044; box-shadow: inset 0 2px 10px rgba(0,0,0,0.85), 0 1px 0 #45484C; width: 30ch; } .ds-pad { height: 30px; border-top: 1px solid rgba(40,224,110,0.16); color: var(--fmc-white, #E8EDE9); white-space: pre; } .ds-cursor { color: var(--fmc-cyan, #4FD8F0); animation: ds-blink 1s step-end infinite; } .ds-error { color: var(--fmc-red, #F25E55); } .ds-advisory { color: var(--fmc-amber, #E0A21A); } @keyframes ds-blink { 50% { opacity: 0; } } @media (prefers-reduced-motion: reduce) { .ds-cursor { animation: none; } }"
+    },
+    {
+      "name": "Status lines",
+      "kind": "custom",
+      "refersTo": "screen",
+      "description": "One line per axis; severity colours, words carry the state.",
+      "html": "<div class=\"ds-glass\"><div class=\"ds-status\" data-sev=\"ok\">UPLINK ACTIVE</div><div class=\"ds-status\" data-sev=\"caution\">SIDECAR STARTING</div><div class=\"ds-status\" data-sev=\"fault\">ACARS REJECT 401</div><div class=\"ds-status\" data-sev=\"idle\">SIM LINK STANDBY</div><div class=\"ds-status\" data-sev=\"advisory\">TFC 12 OBJ 40KM</div></div>",
+      "css": ".ds-glass { font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 15px; line-height: 30px; padding: 13px; border-radius: 5px; background: radial-gradient(ellipse at 50% 45%, var(--fmc-screen-glow, #10241A) 0%, rgba(10,20,16,0) 62%), var(--fmc-screen, #0A1410); border-top: 2px solid #17181A; border-left: 2px solid #17181A; border-right: 1px solid #3D4044; border-bottom: 1px solid #3D4044; box-shadow: inset 0 2px 10px rgba(0,0,0,0.85), 0 1px 0 #45484C; width: 30ch; } .ds-status { height: 30px; white-space: pre; } [data-sev=\"ok\"] { color: var(--fmc-green, #28E06E); } [data-sev=\"caution\"] { color: var(--fmc-amber, #E0A21A); } [data-sev=\"fault\"] { color: var(--fmc-red, #F25E55); } [data-sev=\"idle\"] { color: var(--fmc-dim, #7E9285); } [data-sev=\"advisory\"] { color: var(--fmc-cyan, #4FD8F0); }"
+    },
+    {
+      "name": "Annunciator strip",
+      "kind": "custom",
+      "refersTo": "annunciator-strip",
+      "description": "Recessed strip under the glass: latest sidecar message and host label.",
+      "html": "<div class=\"ds-bezel\"><div class=\"ds-strip\"><span class=\"ds-msg\" data-level=\"error\">SIDECAR EXIT 1 - RESTARTING</span><span class=\"ds-host\">TAURI</span></div></div>",
+      "css": ".ds-bezel { padding: 16px; background: var(--fmc-bezel, #2E3033); } .ds-strip { display: flex; justify-content: space-between; gap: 9px; width: 420px; min-height: 16px; padding: 1.5px 6px; border-radius: 3px; background: var(--fmc-strip, #232528); box-shadow: inset 0 1px 2px rgba(0,0,0,0.6); font-family: \"Consolas\", \"Lucida Console\", \"DejaVu Sans Mono\", \"Courier New\", monospace; font-size: 11.3px; line-height: 1.15; letter-spacing: 0.08em; color: var(--fmc-dim, #7E9285); } .ds-msg[data-level=\"warn\"] { color: var(--fmc-amber, #E0A21A); } .ds-msg[data-level=\"error\"] { color: var(--fmc-red, #F25E55); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Evidence Panel",
+    "overview": "A screenshot of this panel is proof of what the client is doing. Everything in the system serves that promise. The screen holds still, so a capture is never caught mid-transition. Every line of state is words first and colour second. A failure is named on the glass rather than implied. The look is a night-lit flight computer (a moulded grey bezel, a dark glass screen, avionics-coloured monospace characters) because that is the instrument a pilot already trusts to tell the truth mid-flight.\n\nThe world is **avionics and flight computers**, and the current CDU is its current expression, not its only possible one. It uses a 14-row character grid, six line-select keys per side and an alphanumeric key grid. It takes CDU conventions (a small label over a large value, LSK prompts at the row ends, one scratchpad, fixed colour meanings) and keeps Sabiá's own choices where they read better: a 50-column grid instead of 24, and the bird on the plate. A rework toward an MFD-style display (soft keys around a graphic screen, pages that draw rather than list) is legitimate if it improves usability significantly. It must stay a flight computer.\n\nThe unit is the window. One scale, `--fmc-scale`, sizes everything in `em` and `ch`, and whichever window axis runs out first sets it. So the unit fills the window edge to edge and the grid never reflows. Spare height becomes a taller screen: the rows open up, and the characters and keys keep their size. Spare width shows as more bezel. Neither shows as a margin around a floating panel.",
+    "keyCharacteristics": [
+      "One monospace family, one scale, one grid; the size of every element is a multiple of `--fmc-scale`.",
+      "Colour carries severity and role, never information that the words don't also carry.",
+      "Physical depth: the glass is set into the bezel, key caps are raised, and a press sinks the cap.",
+      "Motion is limited to a key press (a 1px drop) and the scratchpad cursor blink, which is off under reduced motion.",
+      "Local fonts only; nothing waits on the network to paint."
+    ],
+    "rules": [
+      {
+        "name": "The Monochrome Rule",
+        "body": "Every line must read correctly with colour removed. Colour follows severity; the words carry the meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The 4.5 Floor Rule",
+        "body": "Every character colour clears 4.5:1 on every surface it is painted on: the glass, the vignette's bright centre, and the annunciator strip. A new colour or surface means re-checking every pair. `idle-sage` and `fault-red` were raised specifically to clear the strip.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Meanings Rule",
+        "body": "Green is data, cyan is the pilot's own input, amber is caution, red is fault, white is structure. A new page reuses these roles; it doesn't invent a colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label Floor Rule",
+        "body": "Nothing that carries information is set smaller than the screen label (`0.76em`). Only the plate goes below it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Uppercase Vocabulary Rule",
+        "body": "On-screen copy is uppercase avionics vocabulary: prompts as rendered (`START>`, `<INDEX`, `SEND*`), terse state words (`STANDBY`, `NO COMM`). Typed entries keep the case the pilot typed, because URLs and tokens are case-sensitive.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Scale Rule",
+        "body": "Every dimension on the unit is in `em` or `ch` of `--fmc-scale`. A `px` value appears only for hairlines, bevel edges and corner radii.",
+        "section": "layout"
+      },
+      {
+        "name": "The Row Ownership Rule",
+        "body": "A key acts on the row it sits beside. Content never floats between rows or sits in the middle of the screen where no key can reach it.",
+        "section": "layout"
+      },
+      {
+        "name": "The Light From Above Rule",
+        "body": "Every bevel agrees on one light source at the top: lit top edges and shadowed bottoms on raised parts, the reverse on recessed ones.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Effect Rule",
+        "body": "The vignette is the only screen effect. There are no scanlines, bloom, flicker or glow halos.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** size every new element from `--fmc-scale` in `em`/`ch`, and update `--fmc-unit-w`/`--fmc-unit-h` when the unit's outline changes.",
+      "**Do** put every action on a key: a row with an LSK prompt, a key-grid key, or (in an MFD rework) a soft key at the screen edge beside its label.",
+      "**Do** reuse the fixed colour roles, and check every new colour/surface pair against 4.5:1 on the glass, the glow centre and the strip.",
+      "**Do** keep the screen still between states: change text in place, with no transitions, so any screenshot is a clean state.",
+      "**Do** keep physical keyboard parity for anything a key can do, and give every key an accessible name from what is painted beside it.",
+      "**Do** name failures on the glass (`COMMAND FAILED`, `PAGE UNAVAILABLE`) instead of leaving a row blank."
+    ],
+    "donts": [
+      "**Don't** break the avionics and flight-computer theme. No web-app chrome (cards, toasts, modal dialogs, dropdown menus, spinners, hamburger menus), no system UI fonts, and no light theme inside the unit.",
+      "**Don't** let colour carry information the words don't (Monochrome Rule).",
+      "**Don't** add screen effects beyond the vignette (One Effect Rule), or animate anything beyond the key press and the cursor.",
+      "**Don't** set informational text below the screen label size, `0.76em` (Label Floor Rule).",
+      "**Don't** load a webfont or any network asset to paint the panel.",
+      "**Don't** paint, announce or log the ingest token; a set token shows only as dots."
+    ]
+  }
+}

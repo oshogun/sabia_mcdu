@@ -16,6 +16,19 @@ walkthroughs, see [usage](usage.md).
   restores whatever was typed underneath. `PREV`/`NEXT` (`PageUp`/`PageDown`
   on a keyboard) page within the current page's group, or step through a
   paged view (long message text, a route, a page of messages).
+- **Physical keyboard**: typed characters and paste go to the scratchpad in
+  the case typed. `Space` is `SP`, `Enter` is `EXEC`, `Backspace` and `Escape`
+  are `CLR`, `Delete` is `DEL`, `PageUp`/`PageDown` are `PREV`/`NEXT`. `F1`–`F6`
+  press `L1`–`L6` and `Shift`+`F1`–`F6` press `R1`–`R6`. After `Tab` moves
+  focus onto a drawn key or LSK, `Enter` or `Space` presses that key instead;
+  after a mouse click they keep their `EXEC`/`SP` meaning. Keys held with
+  `Ctrl` or `Alt` are ignored.
+- **Screen readers**: each LSK is named after the text beside it on the
+  screen (for example `L1, SERVER URL, …`). A field that shows only a
+  placeholder is read by meaning: dots as `SET`, boxes as `EMPTY, REQUIRED`,
+  dashes as `EMPTY`. Page changes, scratchpad
+  error and advisory messages, and warning or error lines on the message line
+  are announced. Typed and masked entries are never announced.
 - **Prompts render as they show on screen**: `START>`/`STOP>`, `SAVE>`,
   `PREFILE>`, `SEND*`/`CONFIRM*` (an asterisk marks a one-shot send, not
   repeatable while in flight).

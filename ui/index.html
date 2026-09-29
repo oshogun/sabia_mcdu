@@ -9,7 +9,7 @@
     <link rel="icon" href="data:," />
   </head>
   <body>
-    <div id="fmc-unit">
+    <main id="fmc-unit">
       <div class="unit-head">
         <span class="unit-brand"><img class="unit-mark" src="img/sabia-bird.svg" alt="" aria-hidden="true" />SABIÁ</span>
         <span class="unit-type">CDU-1</span>
@@ -28,7 +28,7 @@
         <div id="fmc-screen" data-page="STATUS">
           <div class="screen-grid">
             <div class="row row-title">
-              <span id="page-title">ACARS STATUS</span>
+              <span id="page-title" role="heading" aria-level="1">ACARS STATUS</span>
               <span id="page-number"></span>
             </div>
 
@@ -180,7 +180,9 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
+
+    <div id="fmc-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 
     <template id="page-network-template">
       <div class="page-view config-page" data-page-view="NETWORK">

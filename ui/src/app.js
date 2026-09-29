@@ -34,6 +34,7 @@ const dom = {
   scratchpad: document.getElementById('scratchpad'),
   msgLine: document.getElementById('msg-line'),
   bridgeMode: document.getElementById('bridge-mode'),
+  announcer: document.getElementById('fmc-announcer'),
 };
 
 const pages = new Map();
@@ -81,6 +82,7 @@ function setScratchpad(text, kind = 'entry') {
   }
   state.message = { text: value, kind: kind === 'advisory' ? 'advisory' : 'error' };
   paintScratchpad();
+  announce(value);
 }
 
 /** Replaces the entry and sets its masking in one step, so it is painted once. */
@@ -213,6 +215,8 @@ async function showPage(id) {
     dom.number.textContent = page.m && page.m > 1 ? `${page.n}/${page.m}` : '';
   }
   paintStatus();
+  announce(page.m && page.m > 1 ? `${page.title || id} PAGE ${page.n} OF ${page.m}` : page.title || id);
+  scheduleLskLabels();
   return true;
 }
 
@@ -325,6 +329,10 @@ function runDatalink(fn) {
 function setPageNumber(n, m) {
   if (!dom.number) return;
   dom.number.textContent = m > 1 ? `${n}/${m}` : '';
+  if (m > 1) {
+    const page = state.pageId ? pages.get(state.pageId) : null;
+    announce(`${page ? page.title || page.id : ''} PAGE ${n} OF ${m}`);
+  }
 }
 
 // ── Status painting ──────────────────────────────────────────────────────────
@@ -373,8 +381,16 @@ function applyDatalink(value) {
 
 function setMessageLine(text, level = 'info') {
   if (!dom.msgLine) return;
-  dom.msgLine.textContent = text || '';
+  const value = text || '';
+  dom.msgLine.textContent = value;
   dom.msgLine.setAttribute('data-level', level);
+  // applyStatus re-sends the same CFG problem on every heartbeat; announcing
+  // it once and staying quiet until it actually changes is what makes that
+  // tolerable to hear.
+  if ((level === 'warn' || level === 'error') && value && value !== lastAnnouncedMessageLine) {
+    lastAnnouncedMessageLine = value;
+    announce(value);
+  }
 }
 
 function applyLog(log) {
@@ -387,6 +403,197 @@ function applyExit(payload) {
   const code = info.code === null || info.code === undefined ? info.signal || '?' : info.code;
   const tail = info.restarting ? ' - RESTARTING' : '';
   setMessageLine(`SIDECAR EXIT ${code}${tail}`, 'error');
+}
+
+// ── Accessibility ────────────────────────────────────────────────────────────
+
+let lastAnnouncedMessageLine = null;
+
+/**
+ * The one thing a screen reader hears from this panel. Everything else here
+ * is painted, not spoken, so a repeated message (KEY NOT ACTIVE twice) has to
+ * come out as two announcements, not one: emptying the node and filling it on
+ * the next tick is what makes an unchanged value still get read again.
+ */
+function announce(text) {
+  if (!dom.announcer) return;
+  const value = text === null || text === undefined ? '' : String(text);
+  if (!value) return;
+  dom.announcer.textContent = '';
+  setTimeout(() => {
+    dom.announcer.textContent = value;
+  }, 0);
+}
+
+/** Every element under `root` with no element children of its own — the
+ *  actual text-bearing spans and divs a row is built from, whatever page
+ *  built it. A row with no wrapper cell (a CFG label div, say) is its own
+ *  only leaf. */
+function leafElements(root, out) {
+  const children = root.children ? [...root.children] : [];
+  if (children.length === 0) {
+    out.push(root);
+    return out;
+  }
+  for (const child of children) leafElements(child, out);
+  return out;
+}
+
+function isPaintedOut(el) {
+  if (el.getAttribute('aria-hidden') === 'true') return true;
+  if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+    const style = window.getComputedStyle(el);
+    if (style && style.visibility === 'hidden') return true;
+  }
+  return false;
+}
+
+/**
+ * The rect of a leaf's own painted text, not the leaf's box: a leaf with no
+ * wrapping cell of its own (a CFG label div, say — the whole row is its only
+ * element child) is as wide as the row, and its box's centre would land on
+ * the midline regardless of which side the short run of text actually sits
+ * on. A Range over the leaf's contents measures the text itself instead —
+ * clamped to the leaf's own box, because a value CSS clips with `overflow:
+ * hidden` (a long server URL, a Windows certificate path) still carries its
+ * full, untruncated string in the DOM: the Range alone would measure past
+ * the visible edge. The accessible name built from this is still allowed to
+ * say the whole thing — a screen reader hearing the full URL is fine, and
+ * none of these fields are secret (CFG NETWORK's token paints only dots) —
+ * only the geometry used to pick a side needs to stay inside what is drawn.
+ */
+function textRect(el) {
+  if (typeof document.createRange !== 'function') return null;
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const text = range.getBoundingClientRect();
+    if (!text || text.width === 0) return null;
+    const box = el.getBoundingClientRect();
+    if (!box || box.width === 0) return null;
+    const left = Math.max(text.left, box.left);
+    const right = Math.min(text.right, box.right);
+    if (right <= left) return null;
+    return { left, width: right - left };
+  } catch {
+    return null;
+  }
+}
+
+/** The concatenated text of a row's leaves that sit on one half of the screen. */
+function rowSideText(row, side, midX) {
+  if (!row) return '';
+  const words = [];
+  for (const leaf of leafElements(row, [])) {
+    if (isPaintedOut(leaf)) continue;
+    const rect = textRect(leaf);
+    if (!rect) continue;
+    const centerX = rect.left + rect.width / 2;
+    const onSide = side === 'L' ? centerX < midX : centerX >= midX;
+    if (!onSide) continue;
+    const text = (leaf.textContent || '').trim();
+    if (text) words.push(text);
+  }
+  return words.join(' ').trim();
+}
+
+/**
+ * A value made entirely of one placeholder glyph run reads as what it means,
+ * not the glyphs themselves — nobody wants "bullet bullet bullet..." read out
+ * for a set token. Mixed text, or a glyph sitting inside real text, is left
+ * exactly as painted: this only fires when the *whole* trimmed side is one
+ * run of the same placeholder character.
+ */
+export function describePlaceholder(text) {
+  if (/^•+$/.test(text)) return 'SET';
+  if (/^□+$/.test(text)) return 'EMPTY, REQUIRED';
+  if (/^-{4,}$/.test(text)) return 'EMPTY';
+  return text;
+}
+
+function rowAtY(rows, y) {
+  for (const row of rows) {
+    const rect = row.getBoundingClientRect();
+    if (rect.top <= y && y <= rect.bottom) return row;
+  }
+  return null;
+}
+
+function setAriaLabelIfChanged(el, value) {
+  if (el.getAttribute('aria-label') !== value) el.setAttribute('aria-label', value);
+}
+
+/**
+ * Reads the screen the way a person looking at it would: each LSK's name is
+ * whatever is painted next to it, found by geometry so no page has to spell
+ * it out twice. Only runs when the DOM can report real layout — a test DOM
+ * or a detached document leaves whatever label was already there alone.
+ */
+function updateLskLabels() {
+  if (!dom.screen || !dom.body) return;
+  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') return;
+  if (typeof document.createRange !== 'function') return;
+  // #fmc-screen's own box has asymmetric borders (2px left, 1px right), so its
+  // border-box centre is not the screen's visual midline; .screen-grid is the
+  // content itself, sized and centred by the padding on both sides equally.
+  const gridEl = dom.screen.querySelector('.screen-grid');
+  const gridRect = gridEl ? gridEl.getBoundingClientRect() : null;
+  if (!gridRect || gridRect.width === 0) return;
+  const rows = [...dom.body.querySelectorAll('.row')];
+  if (rows.length === 0) return;
+  const rowHeight = rows[0].getBoundingClientRect().height;
+  if (!rowHeight) return;
+  const midX = gridRect.left + gridRect.width / 2;
+
+  for (const button of document.querySelectorAll('[data-lsk]')) {
+    const id = button.getAttribute('data-lsk');
+    if (!id) continue;
+    const rect = button.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) continue;
+    const side = id.charAt(0);
+    const centerY = rect.top + rect.height / 2;
+    const row = rowAtY(rows, centerY);
+    if (!row) {
+      setAriaLabelIfChanged(button, `${id}, not active`);
+      continue;
+    }
+    const value = rowSideText(row, side, midX);
+    const labelRow = rowAtY(rows, centerY - rowHeight);
+    const label = labelRow ? rowSideText(labelRow, side, midX) : '';
+    const parts = [id];
+    if (label) parts.push(label);
+    // The placeholder mapping only ever applies to the value: a label row is
+    // always real text (a field's name), never a glyph run.
+    parts.push(value ? describePlaceholder(value) : 'not active');
+    setAriaLabelIfChanged(button, parts.join(', '));
+  }
+}
+
+let lskLabelsQueued = false;
+
+/** Coalesced to one pass per frame: a single render can touch a dozen rows. */
+function scheduleLskLabels() {
+  if (lskLabelsQueued) return;
+  lskLabelsQueued = true;
+  const run = () => {
+    lskLabelsQueued = false;
+    try {
+      updateLskLabels();
+    } catch {
+      /* a layout that cannot be read must not disturb the existing labels */
+    }
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+  else setTimeout(run, 0);
+}
+
+/** Keeps the LSK labels current between renders too: a page that repaints a
+ *  field in place (CFG's edited-value colour, say) doesn't call showPage. */
+function watchLskLabels() {
+  if (typeof MutationObserver !== 'function' || !dom.body) return;
+  const observer = new MutationObserver(() => scheduleLskLabels());
+  observer.observe(dom.body, { subtree: true, childList: true, characterData: true });
+  if (dom.title) observer.observe(dom.title, { childList: true, characterData: true });
 }
 
 // ── Keys ────────────────────────────────────────────────────────────────────
@@ -484,6 +691,11 @@ function keyFromEvent(event) {
   return null;
 }
 
+// Whether the currently focused element got there from the keyboard (Tab) or
+// a pointer. A key press only bypasses its own EXEC/SP mapping in the former
+// case, so clicking a key and then pressing Enter still means EXEC.
+let keyboardModality = false;
+
 function wireKeys() {
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target.closest('[data-key],[data-lsk]') : null;
@@ -503,6 +715,9 @@ function wireKeys() {
   });
   let clearTimer;
   document.addEventListener('pointerdown', (event) => {
+    // A pointer press means whatever gets focus next isn't from tabbing, so
+    // the next Enter is EXEC again, not a re-press of the key just clicked.
+    keyboardModality = false;
     if (event.target.closest?.('[data-key="CLR"]')) {
       clearTimer = setTimeout(() => setScratchpad(''), 500);
     }
@@ -510,15 +725,43 @@ function wireKeys() {
   for (const type of ['pointerup', 'pointercancel']) {
     document.addEventListener(type, () => clearTimeout(clearTimer));
   }
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    // Switching windows mid-press must not leave a timer running that clears
+    // the scratchpad once the user is looking at something else entirely.
+    window.addEventListener('blur', () => clearTimeout(clearTimer));
+  }
 
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') keyboardModality = true;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    const lskShortcut = /^F([1-6])$/.exec(event.key);
+    if (lskShortcut) {
+      event.preventDefault();
+      const lsk = `${event.shiftKey ? 'R' : 'L'}${lskShortcut[1]}`;
+      flashKey(document.querySelector(`[data-lsk="${lsk}"]`));
+      handleLsk(lsk);
+      return;
+    }
+
     const key = keyFromEvent(event);
     if (!key) return;
+
+    if ((key === 'EXEC' || key === 'SP') && keyboardModality) {
+      // Tab landed on a real key: let the browser's own activation press it
+      // rather than also running the global EXEC/SP mapping on top of it.
+      const focused = event.target instanceof Element ? event.target.closest('[data-key],[data-lsk]') : null;
+      if (focused) return;
+    }
+
     event.preventDefault();
+    // A physical letter key flashes its uppercase face even when typed in
+    // lowercase; what lands on the scratchpad keeps the case actually typed,
+    // since URLs and tokens are case-sensitive.
+    const flashTarget = key.length === 1 ? key.toUpperCase() : key;
     const escaped = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-      ? CSS.escape(key)
-      : key.replace(/["\\]/g, '\\$&');
+      ? CSS.escape(flashTarget)
+      : flashTarget.replace(/["\\]/g, '\\$&');
     flashKey(document.querySelector(`[data-key="${escaped}"]`));
     handleKey(key);
   });
@@ -595,6 +838,7 @@ function boot() {
   window.FMC = fmc;
 
   wireKeys();
+  watchLskLabels();
   paintScratchpad();
   statusPage.register(fmc);
   showPage('STATUS');

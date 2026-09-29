@@ -265,7 +265,8 @@ try {
   assert.equal(await saves(), 1);
   console.log('PASS invalid-object-repair: current raw preferred to stale config; repair, defaults, token preserved');
   current = 'window-minimum';
-  await page.setViewport({ width: 488, height: 680, deviceScaleFactor: 1 });
+  // Keep in step with minWidth/minHeight in src-tauri/tauri.conf.json.
+  await page.setViewport({ width: 544, height: 716, deviceScaleFactor: 1 });
   await show('STATUS'); await emit(snapshot());
   // The unit is the window now, so "the panel fits" is a statement about its
   // contents: --fmc-scale divides the window by --fmc-unit-w/h, and a layout
@@ -288,8 +289,16 @@ try {
     const screen = document.getElementById('fmc-screen');
     return screen.scrollWidth <= screen.clientWidth;
   }), true, 'CDU content overflows its own screen at the minimum window width');
+  // The minimum window exists to hold this floor: nothing that carries
+  // information, the screen's label rows and the message line, may paint
+  // below 11px. The plate is a logotype and is exempt.
+  const floor = await page.evaluate(() => {
+    const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : Infinity);
+    return Math.min(px(document.querySelector('#page-body .row-label')), px(document.getElementById('msg-line')));
+  });
+  assert.ok(floor >= 11, `minimum window: informational text is ${floor.toFixed(2)}px, below the 11px floor`);
   await capture('window-minimum');
-  console.log('PASS window-minimum: unit fills 488x680 unclipped, CDU content fits the screen');
+  console.log('PASS window-minimum: unit fills 544x716 unclipped, CDU content fits the screen, labels >= 11px');
   clean();
   console.log('PASS browser errors: none (pageerror and console error both fatal)');
 } catch (error) {

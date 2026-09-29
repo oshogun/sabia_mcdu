@@ -136,13 +136,27 @@ export function shortenPath(path, maxChars = 22) {
 
 const SEVERITIES = new Set(['ok', 'caution', 'fault', 'idle']);
 
+// The status axes repaint once a second whether anything changed or not
+// (`setInterval(paintStatus, 1000)` in app.js), and this is the only path
+// that runs that often: writing only what actually differs keeps that tick
+// from being a continuous stream of DOM mutations an observer (the LSK
+// label geometry, in particular) would otherwise have to re-read for
+// nothing every second.
+function setTextIfChanged(el, value) {
+  if (el.textContent !== value) el.textContent = value;
+}
+
+function setAttributeIfChanged(el, name, value) {
+  if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+}
+
 function paintAxis(root, domId, stateId, params) {
   const el = root.querySelector(`#${domId}`);
   if (!el) return;
   const described = describeState(stateId);
-  el.textContent = formatStateLabel(stateId, params);
-  el.setAttribute('data-state', typeof stateId === 'string' && stateId ? stateId : described.id);
-  el.setAttribute('data-severity', SEVERITIES.has(described.severity) ? described.severity : 'caution');
+  setTextIfChanged(el, formatStateLabel(stateId, params));
+  setAttributeIfChanged(el, 'data-state', typeof stateId === 'string' && stateId ? stateId : described.id);
+  setAttributeIfChanged(el, 'data-severity', SEVERITIES.has(described.severity) ? described.severity : 'caution');
 }
 
 /**
@@ -167,18 +181,21 @@ export function renderStatus(root, status, options = {}) {
   const traffic = root.querySelector('#status-traffic');
   if (traffic) {
     const line = trafficLine(snapshot.traffic);
-    traffic.textContent = line.text;
-    traffic.setAttribute('data-state', line.state);
+    setTextIfChanged(traffic, line.text);
+    setAttributeIfChanged(traffic, 'data-state', line.state);
   }
 
   const prompt = root.querySelector('#uplink-prompt');
-  if (prompt) prompt.textContent = app.state === 'app.running' ? 'STOP>' : 'START>';
+  if (prompt) setTextIfChanged(prompt, app.state === 'app.running' ? 'STOP>' : 'START>');
 
   const restart = root.querySelector('#restart-prompt');
   if (restart) {
     const crashed = app.state === 'app.crashed';
-    restart.classList.toggle('prompt-hidden', !crashed);
-    restart.setAttribute('aria-hidden', crashed ? 'false' : 'true');
+    // classList.toggle writes the class attribute even when the token was
+    // already in the wanted state, so the "unchanged" check has to happen
+    // before calling it, not inside it.
+    if (restart.classList.contains('prompt-hidden') === crashed) restart.classList.toggle('prompt-hidden', !crashed);
+    setAttributeIfChanged(restart, 'aria-hidden', crashed ? 'false' : 'true');
   }
 }
 
