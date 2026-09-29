@@ -162,4 +162,15 @@ mod tests {
             assert_eq!(decode(line), Err(DecodeError::UnknownType), "{line}");
         }
     }
+
+    #[test]
+    fn a_status_with_a_runtime_block_decodes_unchanged() {
+        let runtime = json!({"nodeVersion":"20.20.2", "nodeAbi":115, "driver":"abi-mismatch",
+            "driverAbi":137, "requiredNodeMajor":24});
+        let mut line = idle_status("app.stopped");
+        line["runtime"] = runtime.clone();
+        let value = decode(&line.to_string()).unwrap();
+        assert_eq!(value["runtime"], runtime);
+        assert_eq!(value, line);
+    }
 }

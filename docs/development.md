@@ -114,9 +114,9 @@ real one.
 
 | Check | Covers | Runs where | Prerequisites |
 | --- | --- | --- | --- |
-| `npm --prefix sidecar run typecheck` | Strict TypeScript type-check of `sidecar/src` | Any OS, Node 20 | none |
-| `npm --prefix sidecar test` | Sidecar unit tests: config, protocol, status, SimConnect, traffic, uplink, datalink client/classify/model/scope/service, clearance/SimBrief/SayIntentions models, sentinel tests that assert secrets never leak, entrypoint | Any OS, Node 20 | TLS tests spawn `openssl`; on Windows it resolves from `C:\Program Files\Git\usr\bin` |
-| `npm --prefix sidecar run build` | Compiles `sidecar/src` to `sidecar/dist` | Any OS, Node 20 | none |
+| `npm --prefix sidecar run typecheck` | Strict TypeScript type-check of `sidecar/src` | Any OS, Node 24 | none |
+| `npm --prefix sidecar test` | Sidecar unit tests: config, protocol, status, SimConnect, traffic, uplink, datalink client/classify/model/scope/service, clearance/SimBrief/SayIntentions models, sentinel tests that assert secrets never leak, entrypoint | Any OS, Node 24 | TLS tests spawn `openssl`; on Windows it resolves from `C:\Program Files\Git\usr\bin` |
+| `npm --prefix sidecar run build` | Compiles `sidecar/src` to `sidecar/dist` | Any OS, Node 24 | none |
 | `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` | Rust formatting | Any Rust toolchain | none |
 | `cargo test --manifest-path src-tauri/Cargo.toml --offline` | Rust unit tests plus process-lifecycle tests that spawn `src-tauri/tests/fake-sidecar.py` as a stand-in sidecar | Windows (this project) | `python` on PATH; uses real sleeps, takes roughly ten seconds |
 | `python src-tauri/tools/check-core.py` | Compiles `config`/`framing`/`protocol`/`restart`/`supervisor` as a standalone crate with no Tauri/WebView dependency, then runs `cargo test` against it; proves the portable core has no hidden dependency on the Tauri crate | Any OS with `cargo` | Point `CARGO_TARGET_DIR` at a scratch directory — the default target dir may be the locked `cargo tauri dev` build |
@@ -126,7 +126,14 @@ real one.
 | `npm run test:gauge` | Preview harness: mock host, dev server, datalink/SimBrief/clearance/SayIntentions vocab and session modules, and full CDU page-flow tests | Any OS, Node | none |
 | `node ui/tools/render-check.mjs` | Headless-Chromium screenshot and label check against an independent STATUS-state table | Any OS, Node | Needs `puppeteer`, not installed by default |
 | `node ui/tools/host-swap-check.mjs` | Proves a synthetic `window.__FMC_HOST__` can drive the real panel | Any OS, Node | Needs `puppeteer`, not installed by default |
-| Manual test plan (below) | End-to-end behaviour against a real MSFS session and the real Sabiá server | A Windows box with MSFS and WebView2 | A built app, Node 20, a reachable Sabiá server, and a known ingest token |
+| Manual test plan (below) | End-to-end behaviour against a real MSFS session and the real Sabiá server | A Windows box with MSFS and WebView2 | A built app, Node 24, a reachable Sabiá server, and a known ingest token |
+
+If a dev tree's `sidecar/node_modules` was `npm ci`'d under a different Node
+than the one you now run `cargo tauri dev` (or the sidecar's own commands)
+with, the `STATUS` page shows `NODE {n} REQD FOR NAVDATA` beside the SIDECAR
+line, naming *that tree's* Node — not necessarily 24. Frames, datalink and
+traffic still work; only navdata is off. Fix it by rebuilding
+`node_modules` with the Node you actually run: `npm --prefix sidecar ci`.
 
 ### Manual test plan (run this on the Windows box)
 
@@ -140,7 +147,7 @@ This is the sign-off procedure for the client's five acceptance criteria:
 - **AC4** — the UI style and labels are FMC-inspired
 - **AC5** — functionally matches an equivalent standalone uplink
 
-Prerequisites: the app built per [setup.md](setup.md), Node 20 available, and
+Prerequisites: the app built per [setup.md](setup.md), Node 24 available, and
 the Sabiá server reachable with a known ingest token.
 
 | # | Step | Expected observation | Proves |

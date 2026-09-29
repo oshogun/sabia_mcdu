@@ -43,7 +43,7 @@ walkthroughs, see [usage](usage.md).
 | Page id | Title | Reached via | LSKs | Shows |
 |---|---|---|---|---|
 | `MENU` | SABIÁ | `MENU` key from anywhere | L1–L6 → STATUS/NETWORK/SIM/TRAFFIC/DL-INDEX/FPLN | Static list |
-| `STATUS` | ACARS STATUS | boot default; L6 from most pages | L6 MENU; R6 start/stop uplink; R5 restart (only while crashed) | 4 axes, traffic line, config path |
+| `STATUS` | ACARS STATUS | boot default; L6 from most pages | L6 MENU; R6 start/stop uplink; R5 restart (only while crashed) | 4 axes, runtime cell, traffic line, config path |
 | `NETWORK` (CFG) | CFG NETWORK | MENU L2 | L1 serverUrl, L2 ingestToken (arm, then type, then commit — see below), L3 certPath, L6 MENU, R6 save (EXEC also saves) | serverUrl / ingestToken (masked) / certPath |
 | `SIM` (CFG) | CFG SIM | MENU L3 | L1 sim version, L2 autoUplink, L6/R6 as above | sim, autoUplink |
 | `TRAFFIC` (CFG) | CFG TRAFFIC | MENU L4 | L1 trafficEnabled, L2 trafficRadiusM, L6/R6 as above | trafficEnabled, trafficRadiusM |
@@ -140,6 +140,22 @@ for its own state line.
 
 An unknown status/datalink state id (sidecar newer than panel) renders as
 `?? <id>` at caution severity rather than blanking the line.
+
+### Runtime cell (R1, right)
+
+Beside the App axis on `STATUS`, a right-hand cell reports whether the Node
+running the sidecar matches the Node the bundled SQLite driver was built for.
+It is empty at idle/ok (no advisory needed) and shows nothing on a sidecar
+that predates this cell.
+
+| Label | Severity | Meaning | Action |
+|---|---|---|---|
+| `NODE {n} REQD FOR NAVDATA` | caution | The connected sidecar's Node doesn't match the driver's ABI, and the matching Node major is known | Install Node `{n}` and put it first on `PATH`, or set `nodePath` |
+| `NODE ABI {abi} REQD FOR NAVDATA` | caution | Same mismatch, but the driver's ABI number isn't in the known-major table | Install the Node release for ABI `{abi}`, or set `nodePath` |
+| `NAVDATA DRIVER FAULT` | caution | The SQLite driver failed to load for a reason other than an ABI mismatch | Reinstall the app; in a dev tree, `npm --prefix sidecar ci` |
+
+Frames, datalink and traffic are unaffected by any of these — only navdata is
+off. See [troubleshooting](troubleshooting.md) for the matching log text.
 
 ### Traffic advisory line
 

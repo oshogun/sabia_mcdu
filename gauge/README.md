@@ -11,7 +11,7 @@ Use `-Port 8381` if that port is occupied. The server binds only to loopback.
 No npm dependencies, Rust, MSFS, SimConnect, or Linux server are required.
 The launcher uses Node on PATH, or a project-local portable runtime under
 `.tools/` if you've placed one there (`.tools/` is ignored by Git). Install
-Node 20 or newer before running the launcher; the harness has no native
+Node 24 or newer before running the launcher; the harness has no native
 dependencies and also works with newer Node versions.
 
 With Node on PATH, equivalent commands are:
@@ -25,7 +25,7 @@ npm run check:ui
 With a portable runtime under `.tools/`, run its `node.exe` directly, e.g.:
 
 ```powershell
-& ./.tools/node-v20.20.2-win-x64/node.exe --test gauge/dev/harness.test.mjs
+& ./.tools/node-v24.21.0-win-x64/node.exe --test gauge/dev/harness.test.mjs
 ```
 
 ## Daily edit/debug loop

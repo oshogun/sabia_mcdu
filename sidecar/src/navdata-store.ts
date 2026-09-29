@@ -38,6 +38,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { SimId } from './config';
+import {
+  abiMismatchReason,
+  NODE_MAJOR_BY_ABI,
+  nodeAbiOf,
+  parseBindingAbi,
+  type NodeVersions,
+} from './runtime';
 import type { LogSink } from './uplink';
 import {
   mergeRow,
@@ -80,6 +87,8 @@ export interface NavdataUnavailable {
   readonly code: string;
   /** One line, already phrased for a status axis. */
   readonly reason: string;
+  /** The ABI the driver was built for; present only when Node refused it for that. */
+  readonly driverAbi?: number;
 }
 
 export interface NavdataMeta {
@@ -220,7 +229,25 @@ export type DriverLoad =
   | { readonly ok: true; readonly driver: SqliteDriver }
   | { readonly ok: false; readonly failure: NavdataUnavailable };
 
-function describeLoadFailure(err: unknown): NavdataUnavailable {
+function describeLoadFailure(
+  err: unknown,
+  versions: NodeVersions = process.versions,
+): NavdataUnavailable {
+  // An ABI mismatch gets a reason that names the Node to install. It is built
+  // from the numbers only: Node's message begins with the addon's install path.
+  const driverAbi = parseBindingAbi(err);
+  if (driverAbi !== null) {
+    return {
+      code: 'ERR_DLOPEN_FAILED',
+      driverAbi,
+      reason: abiMismatchReason(
+        versions.node,
+        nodeAbiOf(versions),
+        driverAbi,
+        NODE_MAJOR_BY_ABI[driverAbi] ?? null,
+      ),
+    };
+  }
   const code = errorCode(err) ?? 'UNKNOWN';
   return {
     code,
@@ -238,14 +265,17 @@ function errorCode(err: unknown): string | undefined {
  * addon that failed to load is not going to start working later in the same
  * process, and retrying it would re-log the same line on every open.
  */
-export function cachingDriverLoader(load: () => unknown): () => DriverLoad {
+export function cachingDriverLoader(
+  load: () => unknown,
+  versions?: NodeVersions,
+): () => DriverLoad {
   let cached: DriverLoad | undefined;
   return () => {
     if (cached !== undefined) return cached;
     try {
       cached = { ok: true, driver: load() as SqliteDriver };
     } catch (err) {
-      cached = { ok: false, failure: describeLoadFailure(err) };
+      cached = { ok: false, failure: describeLoadFailure(err, versions) };
     }
     return cached;
   };
@@ -255,8 +285,25 @@ export function cachingDriverLoader(load: () => unknown): () => DriverLoad {
  * The lazy require. It must stay inside a function body: at module scope it
  * would throw while this module loads, which is exactly the failure the whole
  * fail-soft seam exists to avoid.
+ *
+ * It also opens and closes an in-memory database. The require alone succeeds
+ * for a binding built for another Node ABI; Node only refuses the addon when
+ * the first database is constructed, and a load that stopped at the require
+ * would report a mismatched driver as healthy.
  */
-const loadSqliteDriver = cachingDriverLoader(() => require('better-sqlite3'));
+const loadSqliteDriver = cachingDriverLoader(() => {
+  const Driver = require('better-sqlite3') as SqliteDriver;
+  new Driver(':memory:').close();
+  return Driver;
+});
+
+/**
+ * Loads the driver the way every store open does, and returns the same cached
+ * answer they will get: the startup probe and the first START share one load.
+ */
+export function probeSqliteDriver(): DriverLoad {
+  return loadSqliteDriver();
+}
 
 // ── Where the store lives ─────────────────────────────────────────────────────
 

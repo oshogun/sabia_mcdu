@@ -15,7 +15,7 @@
     "undici": "7.29.1"
   },
   "devDependencies": {
-    "@types/node": "20.19.39",
+    "@types/node": "24.19.0",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
   }

@@ -86,6 +86,12 @@ export interface StatusMessage {
    * sidecar — one that never writes the key at all — also means.
    */
   navdata?: NavdataStatusAxis;
+  /**
+   * Which Node runs this sidecar and whether the SQLite driver loads under it.
+   * Computed once at startup and identical on every line after that. Absent
+   * from an older sidecar.
+   */
+  runtime?: RuntimeStatus;
   /** Redacted — the token is a type error here, not just a convention. */
   config: RedactedConfig | null;
 }
@@ -125,6 +131,30 @@ export interface NavdataStatusAxis {
   pendingDemand: number;
   lastSyncAt: number | null;
   lastSyncError: string | null;
+}
+
+// ── runtime ───────────────────────────────────────────────────────────────────
+//
+// Additive under protocol version 1, like navdata: one optional key on the
+// status message. It exists so the shell can say "install Node 24" instead of
+// a navdata axis that is merely unavailable.
+
+/**
+ * 'ok' is a driver that opened an in-memory database, 'abi-mismatch' one Node
+ * refused because it was built for another ABI, 'failed' any other failure.
+ */
+export type RuntimeDriverState = 'ok' | 'abi-mismatch' | 'failed';
+
+export interface RuntimeStatus {
+  /** process.versions.node, no leading "v"; at most 32 characters. */
+  nodeVersion: string;
+  /** The running Node's NODE_MODULE_VERSION; 0 if it could not be read. */
+  nodeAbi: number;
+  driver: RuntimeDriverState;
+  /** The ABI the driver was built for. Non-null only for 'abi-mismatch'. */
+  driverAbi: number | null;
+  /** The Node major that has driverAbi; null unless the mismatch names a known ABI. */
+  requiredNodeMajor: number | null;
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';

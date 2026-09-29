@@ -22,11 +22,11 @@ jobs:
     name: Node, sidecar, UI and gauge checks
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
 
       # Two lockfiles: the root one is the private dev harness (gauge preview,
       # boundary and contract checks), sidecar/ is the shipped code.
@@ -35,64 +35,25 @@ jobs:
         run: npm ci
 
       # The sidecar's better-sqlite3 (the navdata cache driver) is a native
-      # module that MUST be compiled here. Its 12.11.1 release publishes no
-      # prebuild for Node 20: the node-* assets start at node-v127 (Node 22's
-      # ABI) and Node 20 is ABI 115, so prebuild-install can only miss and
-      # `npm ci` always falls through to `node-gyp rebuild`. Keep Node 20 -
-      # the shipped binding has to load under the Node the user runs the
-      # sidecar with (src-tauri spawns plain `node`), and a Node 22 ABI
-      # binding in the installer would fail to load, i.e. navdata silently dead.
+      # module. Its 12.11.1 release publishes a prebuild for node-v137, which
+      # is Node 24's ABI (confirmed: `node -p process.versions.modules` on
+      # 24.21.0 prints 137), so `npm ci` below takes prebuild-install and
+      # never falls through to `node-gyp rebuild` - no Visual Studio pin, no
+      # Python setup, no npm-version workaround needed on this runner. That
+      # also matches what the user actually runs: src-tauri spawns plain
+      # `node`, and after this change that is Node 24 too, so the shipped
+      # binding and the sidecar's runtime ABI agree.
       #
-      # Two things must hold for that compile to work on this runner:
+      # The assertion below is still the real gate, not this comment: the
+      # sidecar loads the SQLite driver lazily and fails soft, so if the
+      # prebuild fetch ever regresses (registry outage, npm's install-scripts
+      # allowlist gating denying it, a future better-sqlite3 dropping the
+      # node-v137 asset), a missing module would otherwise disable navdata in
+      # silence, and the release job would attach exactly that installer to a
+      # public Release.
       #
-      #  * Visual Studio. windows-latest is now the windows-2025-vs2026 image,
-      #    whose only toolchain is Visual Studio Enterprise 2026 (18.10.x, in
-      #    C:\Program Files\Microsoft Visual Studio\18\Enterprise) - there is no
-      #    VS 2022 to point msvs_version at. Node 20 ships npm 10, which bundles
-      #    node-gyp 10.1.0: it only knows VS years up to 2022, hence the
-      #    "find VS msvs_version not set ... could not use PowerShell to find
-      #    Visual Studio 2017 or newer" failure. node-gyp 12.1.0 added 2026 to
-      #    the years it looks for. The ONLY way to change the node-gyp an install
-      #    script uses is to change npm itself: @npmcli/run-script puts its own
-      #    node-gyp-bin shim ahead of PATH (so `npm i -g node-gyp` is shadowed)
-      #    and hardcodes npm_config_node_gyp to npm's bundled copy (so setting
-      #    that variable is overwritten). npm 11.20.0 bundles node-gyp ^12.4.0
-      #    and still supports Node ^20.17.0; npm 12 requires Node 22, so pin 11.
-      #    Deliberately NO msvs_version pin - node-gyp 12 detects 2019, 2022 or
-      #    2026, so this keeps working when the image's VS moves again.
-      #  * Python. The image's default python is 3.14 from the hosted toolcache;
-      #    pin 3.12, well inside what node-gyp's bundled gyp supports, and hand
-      #    node-gyp that exact interpreter.
-      #
-      # Never paper this over with --ignore-scripts or a best-effort install:
-      # the sidecar loads the SQLite driver lazily and fails soft, so a missing
-      # module disables navdata in silence, and the release job would attach
-      # exactly that installer to a public Release.
-      #
-      # KEEP IN SYNC with the identical block in the `rust` and `release` jobs.
-      - uses: actions/setup-python@v5
-        id: python
-        with:
-          python-version: '3.12'
-
-      - name: Upgrade npm so its bundled node-gyp knows Visual Studio 2026
-        shell: pwsh
-        run: |
-          npm install -g npm@11.20.0
-          $npmVersion = (npm --version | Select-Object -Last 1).Trim()
-          if (-not $npmVersion.StartsWith('11.')) {
-            Write-Output "::error::npm is still $npmVersion, so install scripts would run node-gyp 10.x, which cannot find Visual Studio 2026."
-            exit 1
-          }
-          $npmRoot = (npm root -g | Select-Object -Last 1).Trim()
-          $gyp = Join-Path $npmRoot 'npm\node_modules\node-gyp\bin\node-gyp.js'
-          if (Test-Path -LiteralPath $gyp) {
-            Write-Output "npm $npmVersion bundles node-gyp $(node $gyp --version)"
-          } else {
-            Write-Output "npm $npmVersion (bundled node-gyp not at $gyp; the better-sqlite3 assertion below is the real gate)"
-          }
-          Add-Content -Path $env:GITHUB_ENV -Value "npm_config_python=${{ steps.python.outputs.python-path }}" -Encoding utf8
-
+      # The `rust` and `release` jobs carry a short comment pointing back here.
+      # KEEP IN SYNC.
       - name: Install sidecar dependencies
         shell: pwsh
         run: npm --prefix sidecar ci
@@ -168,7 +129,7 @@ jobs:
     name: Rust format and tests
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -195,36 +156,13 @@ jobs:
       # maintainer's machine those directories already exist - which is why this
       # only ever fails on a fresh runner. `cargo fmt` passes regardless because
       # it does not run build scripts.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
 
-      # See the long comment in the `checks` job: better-sqlite3 has no Node 20
-      # prebuild, so this compiles, and Node 20's own npm bundles a node-gyp that
-      # cannot find VS 2026. KEEP IN SYNC with that block.
-      - uses: actions/setup-python@v5
-        id: python
-        with:
-          python-version: '3.12'
-
-      - name: Upgrade npm so its bundled node-gyp knows Visual Studio 2026
-        shell: pwsh
-        run: |
-          npm install -g npm@11.20.0
-          $npmVersion = (npm --version | Select-Object -Last 1).Trim()
-          if (-not $npmVersion.StartsWith('11.')) {
-            Write-Output "::error::npm is still $npmVersion, so install scripts would run node-gyp 10.x, which cannot find Visual Studio 2026."
-            exit 1
-          }
-          $npmRoot = (npm root -g | Select-Object -Last 1).Trim()
-          $gyp = Join-Path $npmRoot 'npm\node_modules\node-gyp\bin\node-gyp.js'
-          if (Test-Path -LiteralPath $gyp) {
-            Write-Output "npm $npmVersion bundles node-gyp $(node $gyp --version)"
-          } else {
-            Write-Output "npm $npmVersion (bundled node-gyp not at $gyp; the better-sqlite3 assertion below is the real gate)"
-          }
-          Add-Content -Path $env:GITHUB_ENV -Value "npm_config_python=${{ steps.python.outputs.python-path }}" -Encoding utf8
-
+      # See the long comment in the `checks` job: better-sqlite3 has a Node 24
+      # prebuild (node-v137), so `npm ci` below just downloads it - no Visual
+      # Studio or Python setup needed. KEEP IN SYNC with that block.
       - name: Install sidecar dependencies (a declared bundle resource)
         shell: pwsh
         run: npm --prefix sidecar ci
@@ -252,7 +190,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # A lightweight tag must never be published. For a lightweight tag the ref
       # resolves straight to the commit, so %(contents:subject) and
@@ -267,8 +205,12 @@ jobs:
         shell: pwsh
         run: |
           $tag = $env:GITHUB_REF -replace '^refs/tags/', ''
-          # actions/checkout can leave an annotated tag as a lightweight ref, which
-          # would make this very check lie. Re-fetch the real tag object first.
+          # actions/checkout@v7 still fetches the ref as a plain commit object,
+          # not the annotated tag object - v7's only new fork-PR restriction is
+          # for pull_request_target/workflow_run, which a tag push is neither
+          # of, and it does not change tag-object fetching. So the ref can
+          # still resolve as a lightweight tag here, which would make this
+          # very check lie. Re-fetch the real tag object first.
           git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
           if ($LASTEXITCODE -ne 0) {
             Write-Output "::error::Could not fetch the tag object for $tag; refusing to judge the tag from a possibly degraded ref."
@@ -367,40 +309,16 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.existing.outputs.skip == 'false'
         with:
-          node-version: 20
+          node-version: 24
 
-      # See the long comment in the `checks` job: better-sqlite3 has no Node 20
-      # prebuild, so this compiles, and Node 20's own npm bundles a node-gyp that
-      # cannot find VS 2026. It matters most here - an installer whose
-      # better-sqlite3 did not build ships with navdata silently dead.
+      # See the long comment in the `checks` job: better-sqlite3 has a Node 24
+      # prebuild (node-v137), so `npm ci` below just downloads it - no Visual
+      # Studio or Python setup needed. It matters most here - an installer
+      # whose better-sqlite3 did not load ships with navdata silently dead.
       # KEEP IN SYNC with that block.
-      - uses: actions/setup-python@v5
-        id: python
-        if: steps.existing.outputs.skip == 'false'
-        with:
-          python-version: '3.12'
-
-      - name: Upgrade npm so its bundled node-gyp knows Visual Studio 2026
-        if: steps.existing.outputs.skip == 'false'
-        shell: pwsh
-        run: |
-          npm install -g npm@11.20.0
-          $npmVersion = (npm --version | Select-Object -Last 1).Trim()
-          if (-not $npmVersion.StartsWith('11.')) {
-            Write-Output "::error::npm is still $npmVersion, so install scripts would run node-gyp 10.x, which cannot find Visual Studio 2026."
-            exit 1
-          }
-          $npmRoot = (npm root -g | Select-Object -Last 1).Trim()
-          $gyp = Join-Path $npmRoot 'npm\node_modules\node-gyp\bin\node-gyp.js'
-          if (Test-Path -LiteralPath $gyp) {
-            Write-Output "npm $npmVersion bundles node-gyp $(node $gyp --version)"
-          } else {
-            Write-Output "npm $npmVersion (bundled node-gyp not at $gyp; the better-sqlite3 assertion below is the real gate)"
-          }
-          Add-Content -Path $env:GITHUB_ENV -Value "npm_config_python=${{ steps.python.outputs.python-path }}" -Encoding utf8
 
       # The bundle embeds sidecar/dist, sidecar/node_modules and
       # sidecar/package.json as they are on disk at build time, so a full install
@@ -471,7 +389,7 @@ jobs:
       # throw away a build this long. Both installers are unsigned.
       - name: Upload the installers as a workflow artifact
         if: steps.existing.outputs.skip == 'false'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installers-${{ github.ref_name }}
           path: dist-release/*

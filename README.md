@@ -13,7 +13,7 @@ real CPDLC message — all proxied through that server; see
 
 - Windows 10 or 11 (SimConnect, WebView2, `%APPDATA%`)
 - Microsoft Flight Simulator 2020 or 2024 (or FSX, selectable in `CFG SIM`)
-- Node 20
+- Node 24
 - Rust ≥ 1.88 (MSVC toolchain) plus the Visual Studio Build Tools C++ workload
 - Tauri CLI 2.x (`cargo tauri`)
 - WebView2 runtime (ships with an up-to-date Windows 10/11)

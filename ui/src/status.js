@@ -115,6 +115,32 @@ export function defaultStatus() {
   };
 }
 
+/**
+ * Advisory only: whether the bundled navdata driver loaded for the Node the
+ * sidecar is actually running under. Never drives an axis of its own, and
+ * empty whenever the driver is fine or the sidecar hasn't said anything
+ * about it (an older sidecar, or none has reported yet).
+ */
+export function runtimeLine(runtime) {
+  if (!runtime || typeof runtime !== 'object' || typeof runtime.driver !== 'string') {
+    return { state: 'runtime.unknown', text: '', severity: 'idle' };
+  }
+  const { driver, driverAbi, requiredNodeMajor } = runtime;
+  if (driver === 'ok') return { state: 'runtime.ok', text: '', severity: 'ok' };
+  const abiInRange = Number.isInteger(driverAbi) && driverAbi >= 1 && driverAbi <= 9999;
+  const majorInRange = Number.isInteger(requiredNodeMajor) && requiredNodeMajor >= 1 && requiredNodeMajor <= 999;
+  if (driver === 'abi-mismatch' && majorInRange) {
+    return { state: 'runtime.abi-mismatch', text: `NODE ${requiredNodeMajor} REQD FOR NAVDATA`, severity: 'caution' };
+  }
+  if (driver === 'abi-mismatch' && abiInRange) {
+    return { state: 'runtime.abi-mismatch', text: `NODE ABI ${driverAbi} REQD FOR NAVDATA`, severity: 'caution' };
+  }
+  if (driver === 'abi-mismatch' || driver === 'failed') {
+    return { state: 'runtime.driver-failed', text: 'NAVDATA DRIVER FAULT', severity: 'caution' };
+  }
+  return { state: 'runtime.unknown', text: `?? ${driver}`.slice(0, 24), severity: 'caution' };
+}
+
 /** Advisory only: traffic never drives the backend axis, so it has no severity. */
 export function trafficLine(traffic) {
   if (!traffic || traffic.enabled !== true) return { state: 'traffic.off', text: 'TFC OFF' };
@@ -183,6 +209,14 @@ export function renderStatus(root, status, options = {}) {
     const line = trafficLine(snapshot.traffic);
     setTextIfChanged(traffic, line.text);
     setAttributeIfChanged(traffic, 'data-state', line.state);
+  }
+
+  const runtime = root.querySelector('#status-runtime');
+  if (runtime) {
+    const line = runtimeLine(snapshot.runtime);
+    setTextIfChanged(runtime, line.text);
+    setAttributeIfChanged(runtime, 'data-state', line.state);
+    setAttributeIfChanged(runtime, 'data-severity', line.severity);
   }
 
   const prompt = root.querySelector('#uplink-prompt');

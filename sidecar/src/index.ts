@@ -40,6 +40,7 @@ import {
   type DatalinkOutcome,
   type DatalinkRequestMessage,
   type LogLevel,
+  type RuntimeStatus,
   type SidecarMessage,
   type StatusMessage,
 } from './protocol';
@@ -54,6 +55,8 @@ import { Uplink } from './uplink';
 import { DatalinkClient } from './datalink-client';
 import { DatalinkService } from './datalink-service';
 import { NavdataService } from './navdata-service';
+import { probeSqliteDriver } from './navdata-store';
+import { describeRuntime } from './runtime';
 
 const SIDECAR_VERSION = '1.1.0';
 
@@ -160,6 +163,10 @@ class Sidecar {
     sidecarVersion: () => SIDECAR_VERSION,
   });
 
+  // Which Node this is and whether the SQLite driver loads under it. Set once
+  // in start(), before the first status line, and never changed after.
+  private runtime: RuntimeStatus | null = null;
+
   private statusTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private probeTimer: NodeJS.Timeout | null = null;
@@ -198,6 +205,7 @@ class Sidecar {
       // Omitted until there is something to say: an absent axis means this
       // sidecar has no navdata, which is also what an older one means.
       ...(navdata ? { navdata } : {}),
+      ...(this.runtime ? { runtime: this.runtime } : {}),
       config: this.config ? redact(this.config) : null,
     };
   }
@@ -243,6 +251,13 @@ class Sidecar {
       ],
     });
     this.send(this.datalink.buildState());
+
+    // The probe gates nothing: a driver that will not load costs navdata and
+    // nothing else. It shares its cached answer with every later store open,
+    // so a mismatch is warned about here once and not again per open.
+    const load = probeSqliteDriver();
+    this.runtime = describeRuntime(load);
+    if (!load.ok) this.log('warn', load.failure.reason);
 
     this.heartbeatTimer = setInterval(() => this.emitStatusNow(), STATUS_HEARTBEAT_MS);
 

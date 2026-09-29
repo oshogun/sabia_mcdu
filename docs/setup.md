@@ -8,7 +8,7 @@ client, and validating that the result works before you go near MSFS.
 | Tool | Minimum | How to check | Source of the requirement |
 |---|---|---|---|
 | Windows | 10 or 11 | `winver` | SimConnect, WebView2 and `%APPDATA%` are Windows-only |
-| Node.js | 20 | `node -v` | root `package.json` `engines.node`; the sidecar has no `engines` field but is written and tested against Node 20 |
+| Node.js | 24 | `node -v` | root `package.json` `engines.node`; the sidecar has no `engines` field but is written and tested against Node 24, and its bundled `better-sqlite3` binding is a prebuild for Node 24's ABI |
 | Rust (MSVC) | 1.88.0 | `rustc --version` | `src-tauri/Cargo.toml` `rust-version` |
 | Tauri CLI | 2.x | `cargo tauri --version` | `src-tauri/Cargo.toml` pins the `tauri` library at `2.11.5`; the CLI tracks the same major |
 | WebView2 runtime | any current | Settings → Apps → "WebView2 Runtime" | Tauri's webview on Windows |
@@ -22,8 +22,12 @@ above is the actual requirement each tool is pinned to.
 Run from an elevated PowerShell where noted.
 
 ```powershell
-# Node 20 (winget; use nvm-windows instead if you manage multiple Node versions)
-winget install OpenJS.NodeJS.LTS
+# Node 24 — any 24.x release works; only the major has to be 24, not 22 and
+# not 25 or 26
+winget install OpenJS.NodeJS.LTS --version 24.19.0
+# or, with nvm-windows already installed:
+# nvm install 24
+# nvm use 24
 
 # Rust, MSVC host
 winget install Rustlang.Rustup
@@ -124,7 +128,7 @@ $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
 
 The client's runtime — the Tauri shell (`src-tauri/`), the CDU panel inside it, and a live
 SimConnect connection — is Windows-only. Two things do run cross-platform:
-the sidecar's own type check and unit tests (plain Node 20, no SimConnect
+the sidecar's own type check and unit tests (plain Node 24, no SimConnect
 import in that code path), and the CDU preview harness
 (`npm run dev:gauge`, `npm run test:gauge`), which serves the panel against a
 mock host in a browser with no Tauri, no sidecar and no MSFS involved.

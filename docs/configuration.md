@@ -39,7 +39,7 @@ run the sidecar standalone against a different file (see
 | `trafficRadiusM` | no | `40000` | AI traffic sweep radius in metres, clamped to `[1000, 200000]` | `60000` | `CFG TRAFFIC`, L2 |
 | `sim` | no | `"2020"` | One of `2020`, `2024`, `fsx`, case-insensitive | `"2024"` | `CFG SIM`, L1 |
 | `autoUplink` | no | `false` | When `true`, the uplink starts at launch without a `START>` press | `true` | `CFG SIM`, L2 |
-| `nodePath` | no | `null` | Overrides the `node` executable the shell spawns as the sidecar; read only by the shell, never by the sidecar itself | `"C:\\nvm4w\\nodejs\\node.exe"` | not editable |
+| `nodePath` | no | `null` | Overrides the `node` executable the shell spawns as the sidecar — e.g. to pin a Node 24 install when `PATH` resolves an older one; read only by the shell, never by the sidecar itself | `"C:\\Program Files\\nodejs-24\\node.exe"` | not editable |
 
 ## Environment variables
 

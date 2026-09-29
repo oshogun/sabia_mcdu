@@ -129,13 +129,29 @@ cap) before being dropped as oversized input. On the shell's outgoing side, a
 | Type | Fields | Notes |
 | --- | --- | --- |
 | `hello` | `pid, sidecarVersion, nodeVersion, configPath, features[]` | Sent once, first. `features` lists `datalink`, `simbrief-prefile`, `pdc-clearance` when supported |
-| `status` | `app, sim, backend, pause, traffic, config` | Full snapshot, never a partial patch; state-change pushes coalesced to at most 1 per 250 ms, while the 5 s heartbeat and handling a `start`/`stop`/`config` control message send immediately, bypassing that window |
+| `status` | `app, sim, backend, pause, traffic, navdata?, runtime?, config` | Full snapshot, never a partial patch; state-change pushes coalesced to at most 1 per 250 ms, while the 5 s heartbeat and handling a `start`/`stop`/`config` control message send immediately, bypassing that window |
 | `log` | `level, message` | Human-readable, re-logged by the shell |
 | `pong` | `id` | Echoes a `ping` |
 | `frame` | `frame: {...}` | Reserved for a future live-data page; decoded but never emitted in this build |
 | `traffic` | `count, objects[]` | Reserved: decoded but not emitted in this build (the shell drops any unknown/reserved type — no `sidecar:traffic` event exists). Traffic batches go only to `POST /api/ingest/traffic` on the server |
 | `datalink-response` | `id, ok, result` or `id, ok: false, error` | Exactly one per request id |
 | `datalink-state` | `state, watching, httpStatus, serverCode, lastOkAt, lastErrorAt, nextPollAt, scope, thread, prefiledLeg?` | Unsolicited, always a full snapshot |
+
+### `status.runtime`
+
+Computed once per sidecar process, after `hello` and the first datalink-state
+line, then sent unchanged in every `status` line for that process's life
+(coalesced, heartbeat, and the final one at shutdown). It is present whatever
+the config state is, and absent only when the connected sidecar predates this
+field (an older sidecar against a newer shell/CDU).
+
+| Field | Type | Bounds / nullability | Meaning |
+| --- | --- | --- | --- |
+| `nodeVersion` | string | 1–32 chars, never null | The `node` actually running the sidecar, no leading `v` (e.g. `"20.20.2"`) — a different format from `hello.nodeVersion` (`"v20.20.2"`), which is unchanged |
+| `nodeAbi` | integer | ≥ 0, never null | That node's `NODE_MODULE_VERSION` |
+| `driver` | `'ok' \| 'abi-mismatch' \| 'failed'` | never null | `ok`: the SQLite driver constructed an in-memory database. `abi-mismatch`: the load threw `ERR_DLOPEN_FAILED` naming a different ABI. `failed`: any other load failure |
+| `driverAbi` | integer \| `null` | 1–9999 when non-null; non-null iff `driver === 'abi-mismatch'` | The ABI the shipped `better-sqlite3` binding was built for |
+| `requiredNodeMajor` | integer \| `null` | 1–999 when non-null; non-null only when `driverAbi` maps to a known Node major | The Node major that matches `driverAbi` |
 
 ### Shell -> sidecar message types
 

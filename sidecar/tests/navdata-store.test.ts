@@ -100,6 +100,42 @@ describe('the fail-soft seam', () => {
     ]);
   });
 
+  it('names the Node release the driver needs when the ABI does not match', () => {
+    const dir = scratchDir();
+    const failures: NavdataUnavailable[] = [];
+    // Node's own wording, with a synthetic install path in front of it.
+    const mismatch = Object.assign(
+      new Error(
+        "The module '\\\\?\\C:\\Program Files\\Sabia\\sidecar\\node_modules\\better-sqlite3\\build\\Release\\better_sqlite3.node'\n" +
+          'was compiled against a different Node.js version using\n' +
+          'NODE_MODULE_VERSION 115. This version of Node.js requires\n' +
+          'NODE_MODULE_VERSION 137. Please try re-compiling or re-installing\n' +
+          'the module (for instance, using `npm rebuild` or `npm install`).',
+      ),
+      { code: 'ERR_DLOPEN_FAILED' },
+    );
+
+    const store = openNavdataStore(path.join(dir, 'navdata', 'navdata.db'), {
+      loadDriver: cachingDriverLoader(() => {
+        throw mismatch;
+      }, { node: '24.21.0', modules: '137' }),
+      onUnavailable: (failure) => failures.push(failure),
+    });
+
+    expect(store).toBeNull();
+    expect(failures).toEqual([
+      {
+        code: 'ERR_DLOPEN_FAILED',
+        driverAbi: 115,
+        reason:
+          'navdata disabled: Node 24.21.0 (ABI 137) cannot load the SQLite driver built for ABI 115; install Node 20 or set nodePath in config.json',
+      },
+    ]);
+    // The install path in the error never reaches the reason.
+    expect(failures[0].reason).not.toContain('\\');
+    expect(failures[0].reason).not.toContain('better_sqlite3.node');
+  });
+
   it('survives a driver that was never installed', () => {
     const dir = scratchDir();
     const failures: NavdataUnavailable[] = [];

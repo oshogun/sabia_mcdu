@@ -7,8 +7,11 @@ import type { ConfigLoadResult, EffectiveConfig } from '../src/config';
 import type { SimConnectCallbacks } from '../src/simconnect';
 import type { SidecarMessage, StatusMessage } from '../src/protocol';
 import type { UplinkResult } from '../src/uplink';
+import { cachingDriverLoader, type DriverLoad } from '../src/navdata-store';
 
 const mocks = vi.hoisted(() => ({
+  /** What the startup driver probe answers; null leaves the real probe in place. */
+  driverLoad: null as DriverLoad | null,
   loadConfig: vi.fn(),
   setConfig: vi.fn(),
   postFrame: vi.fn(),
@@ -45,6 +48,15 @@ vi.mock('../src/datalink-client', async (importOriginal) => ({
     request = mocks.datalinkRequest;
   },
 }));
+// Only index.ts's view of the probe is replaced: the store's own loader, and
+// every open that goes through it, stays real.
+vi.mock('../src/navdata-store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/navdata-store')>();
+  return {
+    ...actual,
+    probeSqliteDriver: (): DriverLoad => mocks.driverLoad ?? actual.probeSqliteDriver(),
+  };
+});
 vi.mock('../src/simconnect', () => ({
   SimConnectLink: class {
     constructor(_config: EffectiveConfig, callbacks: SimConnectCallbacks) {
@@ -865,5 +877,100 @@ describe('navdata when the store cannot open', () => {
     );
     expect(warnings).toHaveLength(1);
     expect(JSON.stringify(messages)).not.toContain(config.ingestToken);
+  });
+});
+
+describe('runtime block', () => {
+  const statuses = (): StatusMessage[] =>
+    messages.filter((message): message is StatusMessage => message.type === 'status');
+  const warnings = (upTo = messages.length): string[] =>
+    messages
+      .slice(0, upTo)
+      .flatMap((message) => (message.type === 'log' && message.level === 'warn' ? [message.message] : []));
+
+  describe('when the driver was built for another Node', () => {
+    // The loader throws what Node itself throws for a binding built for Node 24
+    // (ABI 137), and the store's own classification turns it into the failure
+    // the probe reports. The path in front of Node's wording is synthetic.
+    const mismatch = Object.assign(
+      new Error(
+        "The module '\\\\?\\C:\\Program Files\\Sabia\\sidecar\\node_modules\\better-sqlite3\\build\\Release\\better_sqlite3.node'\n" +
+          'was compiled against a different Node.js version using\n' +
+          `NODE_MODULE_VERSION 137. This version of Node.js requires\n` +
+          `NODE_MODULE_VERSION ${process.versions.modules}. Please try re-compiling or re-installing\n` +
+          'the module (for instance, using `npm rebuild` or `npm install`).',
+      ),
+      { code: 'ERR_DLOPEN_FAILED' },
+    );
+    const reason =
+      `navdata disabled: Node ${process.versions.node} (ABI ${Number(process.versions.modules)}) ` +
+      'cannot load the SQLite driver built for ABI 137; install Node 24 or set nodePath in config.json';
+
+    beforeAll(() => {
+      mocks.driverLoad = cachingDriverLoader(() => {
+        throw mismatch;
+      })();
+    });
+    afterAll(() => {
+      mocks.driverLoad = null;
+    });
+
+    it('reports a driver ABI mismatch on every status line and still starts the uplink', async () => {
+      expect(mocks.driverLoad).toEqual({
+        ok: false,
+        failure: { code: 'ERR_DLOPEN_FAILED', driverAbi: 137, reason },
+      });
+      const expected = {
+        nodeVersion: process.versions.node,
+        nodeAbi: Number(process.versions.modules),
+        driver: 'abi-mismatch',
+        driverAbi: 137,
+        requiredNodeMajor: 24,
+      };
+
+      const first = messages.findIndex((message) => message.type === 'status');
+      expect(first).toBeGreaterThan(0);
+      expect(statuses()[0].runtime).toEqual(expected);
+      expect(statuses()[0].app.state).toBe('app.stopped');
+      expect(warnings(first)).toEqual([reason]);
+
+      // The probe gates nothing: START, the link and the frame path all run.
+      await start();
+      expect(status().app.state).toBe('app.running');
+      expect(mocks.linkStart).toHaveBeenCalledOnce();
+      sendFrame();
+      await flush();
+      expect(mocks.postFrame).toHaveBeenCalledOnce();
+      expect(status().backend.state).toBe('net.ok');
+
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(statuses().length).toBeGreaterThan(2);
+      for (const line of statuses()) expect(line.runtime).toEqual(expected);
+      expect(warnings().filter((message) => message === reason)).toHaveLength(1);
+      expect(JSON.stringify(messages)).not.toContain('better_sqlite3.node');
+    });
+  });
+
+  describe('when the driver loads', () => {
+    beforeAll(() => {
+      mocks.driverLoad = { ok: true, driver: class {} as never };
+    });
+    afterAll(() => {
+      mocks.driverLoad = null;
+    });
+
+    it('reports a healthy driver as runtime ok', async () => {
+      await start();
+      for (const line of statuses()) {
+        expect(line.runtime).toEqual({
+          nodeVersion: process.versions.node,
+          nodeAbi: Number(process.versions.modules),
+          driver: 'ok',
+          driverAbi: null,
+          requiredNodeMajor: null,
+        });
+      }
+      expect(warnings()).toEqual([]);
+    });
   });
 });

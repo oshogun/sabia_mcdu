@@ -97,6 +97,18 @@ bypassing that coalescing window.
 (`protocol: "SunRise"` matches `sim: "2024"` in the config example above; the
 other valid values are `KittyHawk` for `"2020"` and `FSX_SP2` for `"fsx"`.)
 
+Two more keys can land between `traffic` and `config` above, both optional and
+both absent from a sidecar that predates them:
+
+| Key | Fields | Present when |
+|---|---|---|
+| `navdata?` | `state` (`nav.off`\|`nav.unavailable`\|`nav.bulk`\|`nav.ready`\|`nav.error`), `reason`, `snapshotId`, `rev`, `ackedRev`, `airports`, `navaids`, `waypoints`, `pendingDemand`, `lastSyncAt`, `lastSyncError` | Once the navdata store has opened, or failed to |
+| `runtime?` | `nodeVersion`, `nodeAbi`, `driver` (`ok`\|`abi-mismatch`\|`failed`), `driverAbi`, `requiredNodeMajor` | Always, on a sidecar that has this field at all — computed once at startup and unchanged for that process's life |
+
+`runtime` drives the STATUS page's runtime cell (`NODE {n} REQD FOR NAVDATA`
+and friends) — see [api](api.md) for the full field table and
+[cdu-reference](cdu-reference.md) for the CDU text.
+
 Four axes make up the CDU's STATUS page: **App**, **Sim**, **Backend**,
 **Pause**. Each axis's state id (`app.*`, `sim.*`, `net.*`, `pause.*`) maps to
 a fixed CDU label and severity — see [cdu-reference](cdu-reference.md) for the

@@ -7,6 +7,6 @@
     "check:ui": "node ui/tools/boundary-check.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }

@@ -1772,7 +1772,7 @@ test('status.js: renderStatus writes only what changed, including classList.togg
       writes: () => writes,
     };
   };
-  const ids = ['status-app', 'status-sim', 'status-net', 'status-pause', 'status-traffic', 'uplink-prompt', 'restart-prompt'];
+  const ids = ['status-app', 'status-sim', 'status-net', 'status-pause', 'status-traffic', 'status-runtime', 'uplink-prompt', 'restart-prompt'];
   const els = new Map(ids.map((id) => [`#${id}`, fakeElement()]));
   const root = { querySelector: (selector) => els.get(selector) || null };
   const totalWrites = () => [...els.values()].reduce((sum, el) => sum + el.writes(), 0);
@@ -1796,6 +1796,77 @@ test('status.js: renderStatus writes only what changed, including classList.togg
   renderStatus(root, crashed, { now: 5000 });
   assert.ok(totalWrites() > afterFirst, 'a real change still writes');
   assert.ok(els.get('#restart-prompt').writes() > restartWritesBefore, 'the crash flips restart-prompt');
+});
+
+test('status.js: runtimeLine follows the runtime table', async () => {
+  const { runtimeLine } = await import(new URL('../../ui/src/status.js', import.meta.url));
+
+  const cases = [
+    [undefined, { state: 'runtime.unknown', text: '', severity: 'idle' }],
+    [null, { state: 'runtime.unknown', text: '', severity: 'idle' }],
+    [{}, { state: 'runtime.unknown', text: '', severity: 'idle' }],
+    [{ driver: 'ok', driverAbi: null, requiredNodeMajor: null }, { state: 'runtime.ok', text: '', severity: 'ok' }],
+    [
+      { driver: 'abi-mismatch', driverAbi: 137, requiredNodeMajor: 24 },
+      { state: 'runtime.abi-mismatch', text: 'NODE 24 REQD FOR NAVDATA', severity: 'caution' },
+    ],
+    [
+      { driver: 'abi-mismatch', driverAbi: 999, requiredNodeMajor: null },
+      { state: 'runtime.abi-mismatch', text: 'NODE ABI 999 REQD FOR NAVDATA', severity: 'caution' },
+    ],
+    [
+      { driver: 'abi-mismatch', driverAbi: 9999, requiredNodeMajor: null },
+      { state: 'runtime.abi-mismatch', text: 'NODE ABI 9999 REQD FOR NAVDATA', severity: 'caution' },
+    ],
+    [
+      { driver: 'abi-mismatch', driverAbi: null, requiredNodeMajor: null },
+      { state: 'runtime.driver-failed', text: 'NAVDATA DRIVER FAULT', severity: 'caution' },
+    ],
+    [
+      { driver: 'failed', driverAbi: null, requiredNodeMajor: null },
+      { state: 'runtime.driver-failed', text: 'NAVDATA DRIVER FAULT', severity: 'caution' },
+    ],
+    [
+      { driver: 'teapot', driverAbi: null, requiredNodeMajor: null },
+      { state: 'runtime.unknown', text: '?? teapot', severity: 'caution' },
+    ],
+  ];
+  for (const [runtime, expected] of cases) {
+    assert.deepEqual(runtimeLine(runtime), expected, JSON.stringify(runtime));
+  }
+  for (const [, expected] of cases) assert.ok(expected.text.length <= 30, expected.text);
+});
+
+test('STATUS shows NODE 24 REQD FOR NAVDATA at caution in the node-mismatch scenario', async () => {
+  const { renderStatus } = await import(new URL('../../ui/src/status.js', import.meta.url));
+  const { host, gaugeDev } = await loadMock();
+
+  gaugeDev.scenario('node-mismatch');
+  const status = await host.getStatus();
+
+  const fakeElement = () => {
+    const attrs = {};
+    let text = '';
+    return {
+      get textContent() { return text; },
+      set textContent(value) { text = String(value); },
+      getAttribute: (name) => (name in attrs ? attrs[name] : null),
+      setAttribute: (name, value) => { attrs[name] = String(value); },
+    };
+  };
+  const els = new Map([
+    ['#status-app', fakeElement()],
+    ['#status-runtime', fakeElement()],
+  ]);
+  const root = { querySelector: (selector) => els.get(selector) || null };
+
+  renderStatus(root, status);
+
+  const runtime = els.get('#status-runtime');
+  assert.equal(runtime.textContent, 'NODE 24 REQD FOR NAVDATA');
+  assert.equal(runtime.getAttribute('data-severity'), 'caution');
+  assert.equal(runtime.getAttribute('data-state'), 'runtime.abi-mismatch');
+  assert.equal(els.get('#status-app').textContent, 'UPLINK STOPPED');
 });
 
 test('fpln settings: PREFILE is offered only with a Pilot ID, and without one R6 calls nothing', async (t) => {

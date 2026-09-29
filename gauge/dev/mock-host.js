@@ -8,14 +8,17 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function subscribe(name, fn) { listeners[name].add(fn); return function () { listeners[name].delete(fn); }; }
   function scenario(name) {
-    if (['stopped', 'online', 'retry', 'offline', 'unauthorized', 'paused', 'active-pause', 'crashed'].indexOf(name) < 0) throw new Error('Unknown scenario: ' + name);
+    if (['stopped', 'online', 'retry', 'offline', 'unauthorized', 'paused', 'active-pause', 'crashed', 'node-mismatch'].indexOf(name) < 0) throw new Error('Unknown scenario: ' + name);
     status = {
-      app: { state: name === 'stopped' ? 'app.stopped' : name === 'crashed' ? 'app.crashed' : 'app.running' },
-      sim: { state: name === 'stopped' ? 'sim.idle' : name === 'retry' ? 'sim.retry' : 'sim.connected', nextRetryAt: Date.now() + 10000 },
-      backend: { state: name === 'stopped' ? 'net.idle' : name === 'offline' ? 'net.unreachable' : name === 'unauthorized' ? 'net.unauthorized' : 'net.ok' },
+      app: { state: name === 'crashed' ? 'app.crashed' : (name === 'stopped' || name === 'node-mismatch') ? 'app.stopped' : 'app.running' },
+      sim: { state: (name === 'stopped' || name === 'node-mismatch') ? 'sim.idle' : name === 'retry' ? 'sim.retry' : 'sim.connected', nextRetryAt: Date.now() + 10000 },
+      backend: { state: (name === 'stopped' || name === 'node-mismatch') ? 'net.idle' : name === 'offline' ? 'net.unreachable' : name === 'unauthorized' ? 'net.unauthorized' : 'net.ok' },
       pause: { state: name === 'paused' ? 'pause.full' : name === 'active-pause' ? 'pause.active' : 'pause.off', flags: name === 'paused' ? 1 : name === 'active-pause' ? 4 : 0 },
       traffic: { enabled: true, radiusM: 40000, lastBatchSize: 3 }
     };
+    if (name === 'node-mismatch') {
+      status.runtime = { nodeVersion: '20.20.2', nodeAbi: 115, driver: 'abi-mismatch', driverAbi: 137, requiredNodeMajor: 24 };
+    }
     listeners.status.forEach(function (fn) { fn(clone(status)); });
     return clone(status);
   }

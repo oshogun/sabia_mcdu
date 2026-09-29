@@ -134,14 +134,19 @@ production dependencies before building** (`npm --prefix sidecar ci` or
 haven't verified); there is no separate "prune dev dependencies for the
 bundle" step.
 
-That install **compiles `better-sqlite3` from source**: it publishes no prebuilt
-binary for Node 20's ABI, so `npm ci` always falls through to `node-gyp` and
-needs a C++ toolchain. It also has to be built against Node 20, because the
-sidecar runs under whatever `node` the user has. The sidecar loads the SQLite
-driver lazily and fails soft, so a build that quietly did not produce the binding
-ships an installer with navdata silently dead rather than visibly broken — always
-confirm `node -e "require('better-sqlite3')"` from `sidecar/` before trusting one.
-CI asserts exactly that before it bundles anything.
+That install **takes the `node-v137` prebuild**: `better-sqlite3` publishes a
+prebuilt binary for Node 24's ABI (module version 137), so `npm ci` fetches it
+directly and needs no C++ toolchain or Python. It still has to match the Node
+the sidecar runs under — a prebuild for the wrong ABI fails to load with a
+recognizable `ERR_DLOPEN_FAILED` message, which the sidecar reports as
+`STATUS` showing `NODE 24 REQD FOR NAVDATA` rather than a crash (any other
+load failure is `NAVDATA DRIVER FAULT` — see
+[cdu-reference](cdu-reference.md) and [troubleshooting](troubleshooting.md)).
+The sidecar loads the SQLite driver lazily and fails soft, so a build
+that quietly did not produce a working binding ships an installer with
+navdata silently dead rather than visibly broken — always confirm
+`node -e "require('better-sqlite3')"` from `sidecar/` before trusting one. CI
+asserts exactly that before it bundles anything.
 
 CI does exactly this on `windows-latest` for a tag push, and attaches both
 files to the Release (and to the workflow run as an artifact, so a failed
@@ -226,7 +231,14 @@ new install automatically.
 The installed app is not self-contained: the shell spawns the sidecar by
 running `node` (or the executable at the config file's `nodePath`, if set)
 as a child process — the bundle ships the sidecar's JavaScript and
-`node_modules`, not a Node runtime. **Node 20 must be on the installed
+`node_modules`, not a Node runtime. **Node 24 must be on the installed
 machine's `PATH`, or `nodePath` must point at one**, or the app will fail to
 launch the sidecar (`STATUS` reads a launch-failure state naming the
-problem). This applies to every installed copy, not just dev machines.
+problem — see [troubleshooting](troubleshooting.md)). This applies to every
+installed copy, not just dev machines.
+
+A `node` that is present but not Node 24 doesn't fail to launch: the sidecar
+still starts, but the bundled SQLite driver was built for Node 24's ABI, so it
+fails to load and navdata is disabled. `STATUS` shows `NODE 24 REQD FOR
+NAVDATA` beside the SIDECAR line rather than a launch failure — see
+[cdu-reference](cdu-reference.md) and [troubleshooting](troubleshooting.md).

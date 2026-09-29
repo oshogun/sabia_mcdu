@@ -21,7 +21,7 @@ them, and the boundaries the codebase enforces between them.
                                                                      v
                                                        +---------------------------+
                                                        |   sidecar (sidecar/)      |
-                                                       |   Node 20 / TypeScript    |
+                                                       |   Node 24 / TypeScript    |
                                                        +------+-------------+------+
                                                               |             |
                                                     SimConnect|             |HTTP(S)

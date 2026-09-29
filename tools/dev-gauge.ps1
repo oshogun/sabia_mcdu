@@ -6,6 +6,6 @@ $nodePath = if ($nodeCommand) { $nodeCommand.Source } else {
     Get-ChildItem (Join-Path $root '.tools') -Filter node.exe -Recurse -ErrorAction SilentlyContinue |
         Select-Object -First 1 -ExpandProperty FullName
 }
-if (-not $nodePath) { throw 'Install Node.js 20 or newer, reopen PowerShell, and run this command again.' }
+if (-not $nodePath) { throw 'Install Node.js 24 or newer, reopen PowerShell, and run this command again.' }
 & $nodePath (Join-Path $root 'gauge/dev/server.mjs') --port $Port
 exit $LASTEXITCODE
