@@ -55,7 +55,7 @@ import { DatalinkClient } from './datalink-client';
 import { DatalinkService } from './datalink-service';
 import { NavdataService } from './navdata-service';
 
-const SIDECAR_VERSION = '1.0.0';
+const SIDECAR_VERSION = '1.1.0';
 
 /** Status is a full snapshot, so coalescing bursts costs nothing. */
 const STATUS_COALESCE_MS = 250;
