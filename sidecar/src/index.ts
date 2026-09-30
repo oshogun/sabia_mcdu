@@ -58,7 +58,7 @@ import { NavdataService } from './navdata-service';
 import { probeSqliteDriver } from './navdata-store';
 import { describeRuntime } from './runtime';
 
-const SIDECAR_VERSION = '1.1.0';
+const SIDECAR_VERSION = '2.0.0';
 
 /** Status is a full snapshot, so coalescing bursts costs nothing. */
 const STATUS_COALESCE_MS = 250;
