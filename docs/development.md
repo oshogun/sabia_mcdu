@@ -26,6 +26,7 @@ sidecar/
   package.json, tsconfig.json, vitest.config.ts
 src-tauri/
   src/                       the Rust shell (main.rs, supervisor.rs, datalink.rs, config.rs, protocol.rs, framing.rs, restart.rs)
+  src/supervisor/            the supervisor's child modules and its process tests (shared fixture: process_fixture.rs)
   tests/fake-sidecar.py      Python stand-in child process for the supervisor's process-lifecycle tests
   tools/check-core.py        compiles the portable core modules without Tauri/WebView dependencies
   gen/                       Tauri-generated capability/ACL schemas (tracked)
@@ -119,8 +120,8 @@ real one.
 | `npm --prefix sidecar run build` | Compiles `sidecar/src` to `sidecar/dist` | Any OS, Node 24 | none |
 | `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` | Rust formatting | Any Rust toolchain | none |
 | `cargo test --manifest-path src-tauri/Cargo.toml --offline` | Rust unit tests plus process-lifecycle tests that spawn `src-tauri/tests/fake-sidecar.py` as a stand-in sidecar | Windows (this project) | `python` on PATH; uses real sleeps, takes roughly ten seconds |
-| `python src-tauri/tools/check-core.py` | Compiles `config`/`framing`/`protocol`/`restart`/`supervisor` as a standalone crate with no Tauri/WebView dependency, then runs `cargo test` against it; proves the portable core has no hidden dependency on the Tauri crate | Any OS with `cargo` | Point `CARGO_TARGET_DIR` at a scratch directory — the default target dir may be the locked `cargo tauri dev` build |
-| `supervisor.rs`'s Linux-only test module | Extra process-lifecycle assertions that only compile under `#[cfg(all(test, target_os = "linux"))]` | Linux only | Not exercised by the commands above on Windows |
+| `python src-tauri/tools/check-core.py` | Compiles `config`/`datalink`/`framing`/`protocol`/`restart`/`supervisor` (with its `supervisor/` children) as a standalone crate with no Tauri/WebView dependency, then runs `cargo test` against it; proves the portable core has no hidden dependency on the Tauri crate | Any OS with `cargo` | Point `CARGO_TARGET_DIR` at a scratch directory — the default target dir may be the locked `cargo tauri dev` build. Set `CARGO_NET_OFFLINE=true` to skip the crates.io index update |
+| `src-tauri/src/supervisor/tests.rs`, the supervisor's Linux-only test module | Extra process-lifecycle assertions that only compile under `#[cfg(all(test, target_os = "linux"))]` | Linux only | Not exercised by the commands above on Windows |
 | `node tools/contract-check.mjs` | Every Tauri command/event name matches between `src-tauri/` and `ui/src/bridge.js`, and datalink relay timeouts stay ahead of the sidecar's own HTTP timeouts | Any OS, Node | none |
 | `npm run check:ui` | The eight UI ownership-boundary rules above | Any OS, Node | none |
 | `npm run test:gauge` | Preview harness: mock host, dev server, datalink/SimBrief/clearance/SayIntentions vocab and session modules, and full CDU page-flow tests | Any OS, Node | none |

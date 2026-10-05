@@ -1,6 +1,6 @@
 """Compile the actual portable Rust modules without Tauri/WebView libraries.
 
-Usage: python3 windows-client/src-tauri/tools/check-core.py
+Usage: python src-tauri/tools/check-core.py
 Uses the installed cargo and a temporary crate; no toolchain installation.
 """
 from pathlib import Path
@@ -18,9 +18,16 @@ with tempfile.TemporaryDirectory(prefix='msfslogger-core-check-') as directory:
         '[package]\nname="msfslogger-core-check"\nversion="0.1.0"\nedition="2021"\n'
         '[lib]\npath="lib.rs"\n[dependencies]\nserde_json=' +
         json.dumps(manifest['dependencies']['serde_json']) + '\n')
-    scratch.joinpath('lib.rs').write_text('\n'.join(
-        '#[path = ' + json.dumps(str(shell / 'src' / (name + '.rs'))) + ']\npub mod ' + name + ';'
-        for name in ['config', 'framing', 'protocol', 'restart', 'supervisor']) + '\n')
+    # One inline module rooted at src/, re-exported at the crate root so that
+    # `crate::config` and the rest resolve as they do in the shell. Loading each
+    # file through its own #[path] would make supervisor.rs a mod-rs file, and
+    # its `mod relay;` and siblings would then be looked for in src/ instead of
+    # src/supervisor/. The files compile in place, so include_str! paths hold.
+    scratch.joinpath('lib.rs').write_text(
+        '#[path = ' + json.dumps(str(shell / 'src')) + ']\nmod portable {\n' + ''.join(
+            '    pub mod ' + name + ';\n'
+            for name in ['config', 'datalink', 'framing', 'protocol', 'restart', 'supervisor'])
+        + '}\npub use portable::*;\n')
     env = dict(os.environ)
     env.setdefault('CARGO_TARGET_DIR', str(scratch / 'target'))
     raise SystemExit(subprocess.call(['cargo', 'test', '--manifest-path', str(scratch / 'Cargo.toml')], env=env))
